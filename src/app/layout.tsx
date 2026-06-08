@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { fontDisplay, fontText } from "@/theme/fonts";
 import { seo } from "@/theme/seo";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import "./globals.css";
 import "@/theme/tokens.css";
 import "@/theme/typography.css";
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${fontDisplay.variable} ${fontText.variable}`}
     >
       <body className="bg-background text-foreground font-sans antialiased">
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
