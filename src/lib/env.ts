@@ -19,4 +19,9 @@ export function parseEnv(input: Record<string, string | undefined>): Env {
   return result.data;
 }
 
-export const env: Env = parseEnv(process.env);
+let cached: Env | null = null;
+export function getEnv(): Env {
+  if (cached) return cached;
+  cached = parseEnv(process.env);
+  return cached;
+}
