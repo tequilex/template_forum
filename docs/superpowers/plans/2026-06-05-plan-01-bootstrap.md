@@ -2069,4 +2069,37 @@ git tag -a plan-01-bootstrap-done -m "Plan 1 (Bootstrap) complete"
 - Postgres работает, миграции применяются
 - Тема применена, layout responsive, header с местом для login-кнопки
 - `env.ts` — точка добавления OAuth ENV-переменных
+
+---
+
+## Реализация: расхождения с планом
+
+В ходе исполнения плана пришлось отклониться от исходных шагов. Контракты спеки (`docs/superpowers/specs/2026-06-05-skelet-blog-design.md`) не нарушены — изменения на уровне реализации.
+
+| План говорил | Реализация | Причина |
+|---|---|---|
+| `export const env = parseEnv(process.env)` (eager) | `export function getEnv(): Env` (lazy + cached) | `next build` импортирует все route-модули на стадии «Collecting page data» → eager-парс падает без env-переменных в build-окружении |
+| `export const db = drizzle(pool)` (eager) | `export function getDb(): NodePgDatabase` + `getPool()` | Та же причина: `db.ts` импортит `env`, eager-Pool тригерит парс env при сборке |
+| `--format=esm --outfile=migrate.mjs --packages=external` | `--format=cjs --outfile=migrate.cjs --external:pg-native` | ESM external не находит deps в standalone-runner (там нет node_modules). CJS-bundle самодостаточен. |
+| `scripts/migrate.ts` с top-level `await` | `async function main()` + `main().catch(...)` | CJS-формат esbuild не поддерживает top-level await |
+| `<Link href="/about\|/rules\|/contacts">` в Footer<br/>`<Link href="/tags\|/login">` в Header | `<a href="...">` + комментарии `// TODO(plan-N)` | `typedRoutes: true` валит build на ссылках на ещё не существующие роуты |
+
+**Что добавили помимо плана** (без этого Docker-сборка не работает):
+
+- `.dockerignore` — исключает локальный `node_modules` с macOS pnpm-store симлинками, который через `COPY . .` ломал deps stage
+- `package.json` → `"pnpm": { "onlyBuiltDependencies": ["esbuild", "sharp", "@tailwindcss/oxide"] }` — pnpm 10 блокирует postinstall по умолчанию, esbuild не скачивает musl-бинарь под Alpine
+- `drizzle/migrations/meta/_journal.json` (stub с `entries: []`) — drizzle migrator падает на пустой папке миграций
+- `tests/setup.ts` — `process.env as Record<string, string | undefined>` обходит read-only-маркер на `NODE_ENV` (TS 5.5+)
+
+**Маркеры для следующих планов** (находятся через `git grep "TODO(plan-N)"`):
+
+- `TODO(plan-2)` в `src/components/layout/Header.tsx` — вернуть `<Link>` для `/login` когда появится auth-роут
+- `TODO(plan-4)` в `src/components/layout/Header.tsx` — `<Link>` для `/tags` когда появится список тегов
+- `TODO(plan-5)` в `src/components/layout/Footer.tsx` — `<Link>` для `/about`, `/rules`, `/contacts` когда появятся стат-страницы
+
+**Импликации для плана 2 (Auth):**
+
+- Auth.js callbacks/config: использовать `getEnv().NEXTAUTH_SECRET` (не `env.NEXTAUTH_SECRET`)
+- DB-запросы: `await getDb().select()...` (не `db.select()...`)
+- Любая новая lib, которая держит ресурс на основе env (R2-client в плане 3, sitemap-config в плане 5) — должна быть lazy по тому же паттерну `getX()`
 - `drizzle/schema.ts` — пустой, ждёт Auth.js-таблицы
