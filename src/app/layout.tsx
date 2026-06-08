@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { fontDisplay, fontText } from "@/theme/fonts";
 import { seo } from "@/theme/seo";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
 import "@/theme/tokens.css";
 import "@/theme/typography.css";
@@ -18,9 +20,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${fontDisplay.variable} ${fontText.variable}`}
     >
-      <body className="bg-background text-foreground font-sans antialiased">
+      <body className="bg-background text-foreground font-sans antialiased min-h-screen flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <Header />
+          <div className="flex-1">{children}</div>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
