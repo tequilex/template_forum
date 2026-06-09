@@ -11,6 +11,18 @@ export const content = {
     tags: "Темы",
     login: "Войти",
   },
+  auth: {
+    loginTitle: "Войти",
+    loginSubtitle: "Выберите способ входа",
+    noProviders: "OAuth-провайдеры не настроены. Заполните CLIENT_ID/SECRET в .env.",
+    signOut: "Выйти",
+    welcomeTitle: "Придумайте username",
+    welcomeHint: "3–20 символов: латиница, цифры, _ и -. Это часть адреса вашего профиля.",
+    welcomeSubmit: "Сохранить",
+    errorFormat: "Неправильный формат username",
+    errorReserved: "Этот username зарезервирован",
+    errorTaken: "Этот username уже занят",
+  },
   empty: {
     feed: "Пока нет постов. Будьте первым!",
     drafts: "У вас нет черновиков",
