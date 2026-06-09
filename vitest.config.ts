@@ -11,6 +11,7 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname, "src"),
       "@/theme": resolve(__dirname, "theme"),
+      "@db": resolve(__dirname, "drizzle"),
     },
   },
 });
