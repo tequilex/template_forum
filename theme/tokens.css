@@ -1,0 +1,32 @@
+:root {
+  --color-background: 0 0% 100%;
+  --color-foreground: 222 47% 11%;
+  --color-primary: 217 91% 60%;
+  --color-primary-fg: 0 0% 100%;
+  --color-accent: 280 70% 55%;
+  --color-muted: 220 14% 96%;
+  --color-muted-fg: 220 9% 46%;
+  --color-border: 220 13% 91%;
+  --color-ring: 217 91% 60%;
+  --color-danger: 0 84% 60%;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --font-display: var(--font-display-var, system-ui), sans-serif;
+  --font-text: var(--font-text-var, system-ui), sans-serif;
+}
+
+.dark {
+  --color-background: 222 47% 6%;
+  --color-foreground: 0 0% 98%;
+  --color-primary: 217 91% 65%;
+  --color-primary-fg: 222 47% 6%;
+  --color-accent: 280 70% 65%;
+  --color-muted: 220 14% 14%;
+  --color-muted-fg: 220 9% 60%;
+  --color-border: 220 13% 18%;
+  --color-ring: 217 91% 65%;
+  --color-danger: 0 70% 55%;
+}
