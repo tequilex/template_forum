@@ -16,6 +16,7 @@ export const content = {
     loginSubtitle: "Выберите способ входа",
     noProviders: "OAuth-провайдеры не настроены. Заполните CLIENT_ID/SECRET в .env.",
     signOut: "Выйти",
+    chooseUsername: "Выбери ник",
     welcomeTitle: "Придумайте username",
     welcomeHint: "3–20 символов: латиница, цифры, _ и -. Это часть адреса вашего профиля.",
     welcomeSubmit: "Сохранить",

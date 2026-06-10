@@ -32,6 +32,10 @@ export async function Header() {
           <ThemeToggle />
           {user?.username ? (
             <UserMenu username={user.username} name={user.name ?? null} image={user.image ?? null} />
+          ) : user ? (
+            <Button asChild variant="default" size="sm" className="hidden md:inline-flex">
+              <Link href="/welcome">{content.auth.chooseUsername}</Link>
+            </Button>
           ) : (
             <Button asChild variant="default" size="sm" className="hidden md:inline-flex">
               <Link href="/login">{content.nav.login}</Link>
@@ -51,7 +55,9 @@ export async function Header() {
                 <a href="/tags" className="text-base text-foreground">{content.nav.tags}</a>
                 {user?.username
                   ? <Link href={`/u/${user.username}`} className="text-base text-foreground">@{user.username}</Link>
-                  : <Link href="/login" className="text-base text-foreground">{content.nav.login}</Link>}
+                  : user
+                    ? <Link href="/welcome" className="text-base text-foreground">{content.auth.chooseUsername}</Link>
+                    : <Link href="/login" className="text-base text-foreground">{content.nav.login}</Link>}
               </nav>
             </SheetContent>
           </Sheet>

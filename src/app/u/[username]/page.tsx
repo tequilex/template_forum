@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { users } from "@db/schema";
+import { requireAuthState } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function UserProfilePage({
 }: {
   params: Promise<{ username: string }>;
 }) {
+  await requireAuthState();
   const { username } = await params;
   const lower = username.toLowerCase();
 

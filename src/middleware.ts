@@ -1,37 +1,13 @@
-import { auth } from "@/lib/auth.edge";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PREFIXES = ["/login", "/api", "/u/", "/_next", "/favicon", "/icons", "/manifest"];
-
-// TODO(plan-3+): rate-limit на /api/auth/callback/* (спека §7.6).
-// TODO(plan-5): admin-role gating для /admin/* (спека §7.5).
-
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-  const session = req.auth;
-
-  if (!session?.user) return NextResponse.next();
-
-  if (session.user.bannedAt) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/";
-    const res = NextResponse.redirect(url);
-    for (const name of ["authjs.session-token", "__Secure-authjs.session-token"]) {
-      res.cookies.set(name, "", { maxAge: 0, path: "/" });
-    }
-    return res;
-  }
-
-  if (!session.user.username) {
-    if (pathname === "/welcome") return NextResponse.next();
-    if (PUBLIC_PREFIXES.some(p => pathname === p || pathname.startsWith(p))) return NextResponse.next();
-    const url = req.nextUrl.clone();
-    url.pathname = "/welcome";
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next();
-});
+// Edge middleware без auth-логики: только пропихивает pathname в request-headers,
+// чтобы RSC-layout (Node-runtime, с DrizzleAdapter) мог корректно делать auth-guard.
+// БД-сессии нельзя читать из edge (postgres-driver не запускается).
+export function middleware(req: NextRequest) {
+  const headers = new Headers(req.headers);
+  headers.set("x-pathname", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
 
 export const config = {
   matcher: [
