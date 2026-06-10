@@ -18,12 +18,14 @@ export default async function LoginPage() {
   });
 
   return (
-    <main className="container mx-auto max-w-sm px-4 py-12">
-      <h1 className="font-display text-2xl mb-2">{content.auth.loginTitle}</h1>
-      <p className="text-muted-foreground mb-6">{content.auth.loginSubtitle}</p>
-      {providers.length > 0
-        ? <ProviderButtons providers={providers} />
-        : <p className="text-sm text-muted-foreground">{content.auth.noProviders}</p>}
+    <main className="container mx-auto flex max-w-md items-center justify-center px-4 py-12">
+      <div className="w-full rounded-2xl border border-border bg-card p-8 shadow-sm">
+        <h1 className="font-display text-2xl text-center mb-2">{content.auth.loginTitle}</h1>
+        <p className="text-muted-foreground text-center mb-8">{content.auth.loginSubtitle}</p>
+        {providers.length > 0
+          ? <ProviderButtons providers={providers} />
+          : <p className="text-sm text-muted-foreground text-center">{content.auth.noProviders}</p>}
+      </div>
     </main>
   );
 }

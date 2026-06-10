@@ -13,7 +13,7 @@ export const content = {
   },
   auth: {
     loginTitle: "Войти",
-    loginSubtitle: "Выберите способ входа",
+    loginSubtitle: "Выберите сервис для входа",
     noProviders: "OAuth-провайдеры не настроены. Заполните CLIENT_ID/SECRET в .env.",
     signOut: "Выйти",
     chooseUsername: "Выбери ник",

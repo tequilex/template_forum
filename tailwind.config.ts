@@ -1,31 +1,42 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
 
+// Цвета лежат в --color-* как чистый hex (IDE подсвечивает превью).
+// Альфу подмешиваем через color-mix — Tailwind подставит <alpha-value> в момент сборки.
+const c = (name: string) =>
+  `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`;
+
 export default {
   content: ["./src/**/*.{ts,tsx}", "./theme/**/*.{ts,tsx}"],
   darkMode: ["class"],
   theme: {
     extend: {
       colors: {
-        background: "hsl(var(--color-background) / <alpha-value>)",
-        foreground: "hsl(var(--color-foreground) / <alpha-value>)",
+        background: c("--color-background"),
+        foreground: c("--color-foreground"),
+        header: c("--color-header"),
         primary: {
-          DEFAULT: "hsl(var(--color-primary) / <alpha-value>)",
-          foreground: "hsl(var(--color-primary-fg) / <alpha-value>)",
+          DEFAULT:    c("--color-primary"),
+          foreground: c("--color-primary-fg"),
         },
-        accent: "hsl(var(--color-accent) / <alpha-value>)",
+        accent: c("--color-accent"),
+        card: {
+          DEFAULT:    c("--color-card"),
+          foreground: c("--color-card-fg"),
+        },
         muted: {
-          DEFAULT: "hsl(var(--color-muted) / <alpha-value>)",
-          foreground: "hsl(var(--color-muted-fg) / <alpha-value>)",
+          DEFAULT:    c("--color-muted"),
+          foreground: c("--color-muted-fg"),
         },
-        border: "hsl(var(--color-border) / <alpha-value>)",
-        ring: "hsl(var(--color-ring) / <alpha-value>)",
-        destructive: "hsl(var(--color-danger) / <alpha-value>)",
+        border: c("--color-border"),
+        ring:   c("--color-ring"),
+        destructive: c("--color-danger"),
       },
       borderRadius: {
         sm: "var(--radius-sm)",
         md: "var(--radius-md)",
         lg: "var(--radius-lg)",
+        pill: "var(--radius-pill)",
       },
       fontFamily: {
         display: "var(--font-display)",
