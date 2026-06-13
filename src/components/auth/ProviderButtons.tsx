@@ -1,51 +1,67 @@
 "use client";
 import { signIn } from "next-auth/react";
 import type { IconType } from "react-icons";
-import { SiVk, SiOdnoklassniki, SiGoogle, SiGithub, SiMaildotru } from "react-icons/si";
+import { SiMaildotru, SiOdnoklassniki, SiVk } from "react-icons/si";
 import { FaYandex } from "react-icons/fa6";
 
-// VK ID — единый шлюз для VK / Mail.ru / Одноклассники: общий next-auth provider "vk",
-// один callback, одна запись в accounts; разный ?provider=<...> на id.vk.com/authorize
-// просто открывает соответствующий экран входа.
-type UiButton = {
-  label: string;
-  providerId: string;
-  Icon: IconType;
-  bg: string;
-  fg: string;
-  authParams?: Record<string, string>;
+type CustomButton = { kind: "custom"; label: string; href: string; Icon: IconType; bg: string; fg: string };
+type NextAuthButton = { kind: "nextauth"; label: string; providerId: string; Icon: IconType; bg: string; fg: string };
+type Button = CustomButton | NextAuthButton;
+
+const NEXTAUTH_EXPANSION: Record<string, NextAuthButton[]> = {
+  yandex: [{ kind: "nextauth", label: "Яндекс", providerId: "yandex", Icon: FaYandex, bg: "#FC3F1D", fg: "#FFFFFF" }],
 };
 
-const EXPANSION: Record<string, UiButton[]> = {
-  vk: [
-    { label: "ВКонтакте",            providerId: "vk", Icon: SiVk,            bg: "#0077FF", fg: "#FFFFFF" },
-    { label: "Мой Мир@mail.ru",       providerId: "vk", Icon: SiMaildotru,     bg: "#005FF9", fg: "#FFFFFF",
-      authParams: { provider: "mail_ru" } },
-    { label: "Одноклассники", providerId: "vk", Icon: SiOdnoklassniki, bg: "#EE8208", fg: "#FFFFFF",
-      authParams: { provider: "ok_ru" } },
-  ],
-  yandex: [{ label: "Яндекс", providerId: "yandex", Icon: FaYandex, bg: "#FC3F1D", fg: "#FFFFFF" }],
-  google: [{ label: "Google", providerId: "google", Icon: SiGoogle, bg: "#000000", fg: "#FFFFFF" }],
-  github: [{ label: "GitHub", providerId: "github", Icon: SiGithub, bg: "#24292E", fg: "#FFFFFF" }],
-};
+const VK_BUTTONS: CustomButton[] = [
+  { kind: "custom", label: "ВКонтакте",       href: "/api/oauth/vk/start?provider=vkid",    Icon: SiVk,            bg: "#0077FF", fg: "#FFFFFF" },
+  { kind: "custom", label: "Мой Мир@mail.ru",  href: "/api/oauth/vk/start?provider=mail_ru", Icon: SiMaildotru,     bg: "#005FF9", fg: "#FFFFFF" },
+  { kind: "custom", label: "Одноклассники",    href: "/api/oauth/vk/start?provider=ok_ru",   Icon: SiOdnoklassniki, bg: "#EE8208", fg: "#FFFFFF" },
+];
 
-export function ProviderButtons({ providers }: { providers: { id: string }[] }) {
-  if (providers.length === 0) return null;
-  const buttons = providers.flatMap(p => EXPANSION[p.id] ?? []);
+const ROW_CLASS = "flex w-full items-center justify-between rounded-xl px-5 py-3 text-base font-medium shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+
+export function ProviderButtons({
+  nextAuthProviders,
+  vkEnabled,
+}: {
+  nextAuthProviders: string[];
+  vkEnabled: boolean;
+}) {
+  const buttons: Button[] = [
+    ...nextAuthProviders.flatMap((id) => NEXTAUTH_EXPANSION[id] ?? []),
+    ...(vkEnabled ? VK_BUTTONS : []),
+  ];
+  if (buttons.length === 0) return null;
+
   return (
     <div className="flex flex-col gap-3">
-      {buttons.map((b, i) => (
-        <button
-          key={`${b.providerId}-${b.authParams?.provider ?? "_"}-${i}`}
-          type="button"
-          onClick={() => signIn(b.providerId, { callbackUrl: "/" }, b.authParams)}
-          style={{ backgroundColor: b.bg, color: b.fg }}
-          className="flex w-full items-center justify-between rounded-xl px-5 py-3 text-base font-medium shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-        >
-          <span>{b.label}</span>
-          <b.Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
-        </button>
-      ))}
+      {buttons.map((b, i) => {
+        if (b.kind === "custom") {
+          return (
+            <a
+              key={`vk-${i}`}
+              href={b.href}
+              style={{ backgroundColor: b.bg, color: b.fg }}
+              className={ROW_CLASS}
+            >
+              <span>{b.label}</span>
+              <b.Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
+            </a>
+          );
+        }
+        return (
+          <button
+            key={`na-${b.providerId}-${i}`}
+            type="button"
+            onClick={() => signIn(b.providerId, { callbackUrl: "/" })}
+            style={{ backgroundColor: b.bg, color: b.fg }}
+            className={ROW_CLASS}
+          >
+            <span>{b.label}</span>
+            <b.Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
+          </button>
+        );
+      })}
     </div>
   );
 }
