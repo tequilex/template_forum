@@ -1459,27 +1459,36 @@ git commit -m "docs(plan-03): README sharp note + retro skeleton"
 
 ---
 
-## Retro (заполнить после выполнения)
-
-> Заполняется в конце plan-03 — расхождения с планом, неожиданности, что отложено.
-> Шаблон такой же, как в plan-01 и plan-02.
+## Retro (выполнено 2026-06-13)
 
 ### Что прошло гладко
 
-- TBD
+- **TDD-итерации все короткие.** На каждом из пяти модулей (env-r2, r2-key, validate, normalize, upload-route) RED → GREEN занял один проход, без отладочных циклов. Тесты сразу покрывали реальные кейсы из спеки §9.
+- **sharp prebuild на M-Mac.** `pnpm add sharp` подтянул `@img/sharp-darwin-arm64` без танцев с `SHARP_IGNORE_GLOBAL_LIBVIPS`. Зона риска §10.1 не реализовалась (на Hetzner проверим в plan-06).
+- **`@aws-sdk/client-s3` встал тихо.** ~150 KB, никаких peer-warnings, никаких бандл-проблем — `pnpm build` зелёный и с пустым, и с заполненным R2-env.
+- **Миграция 0001 чистая.** `pnpm db:generate` создал ровно те колонки и индексы, что в спеке §4; никаких неожиданных `DROP` или ALTER на уже существующих таблицах.
 
 ### Расхождения с планом / спекой
 
-- TBD
+1. **`pnpm db:migrate` не подхватывает `.env` сам.** `scripts/migrate.ts` (plan-01) читает только `process.env`. Пришлось делать `set -a && source .env && set +a && pnpm db:migrate`. Это поведение plan-01, не plan-03 — фиксировать в `migrate.ts` нет смысла, но добавляю в README команд для будущих сессий (или принимаем как локальный wart).
+2. **`.env.example` ещё содержал устаревший Google/GitHub OAuth-блок.** Plan-02 retro п.8 (narrowing на Yandex+VK) был применён к `.env` и коду, но `.env.example` остался прежним. Pivot: в Task 1 заодно синхронизировал — удалил Google/GitHub блок, добавил `R2_PUBLIC_BASE=https://images.example.ru` как пример.
+3. **README устарел.** Содержал секцию «OAuth для dev» про GitHub, которого больше нет. Pivot: в Task 10 переписал секцию под Yandex + VK ID, добавил `cleanup:orphans` в таблицу команд, плюс sharp/Hetzner блок (как и планировал).
+4. **TS-ошибка в upload-route тесте на `Buffer → BlobPart`.** Под strict TS `new Blob([buffer], ...)` не компилируется (Node Buffer ≠ ArrayBuffer). Fix: `new Blob([new Uint8Array(file)], { type: mime })`. Маленький, не блокирующий, но в плане я этот случай не предвидел.
+5. **Drizzle deprecation hint на `pgTable(name, cols, extraConfig)`.** Drizzle 0.36 двигается к `pgTable(name, cols, (t) => [...])` (массивы вместо объектов). Plan-01/02 уже на старой форме — для homogeneity оставил `uploads` тоже на старой. Refactor на новую форму — отдельная задача (post-plan-03 chore).
+6. **Ручная DoD-проверка с реальным R2 (Step 10.3) отложена.** Требует интерактива с Cloudflare dashboard, заведения R2 dev-bucket и cookie сессии. В рамках inline execution не реализовано — выполню вручную перед стартом plan-04 (логика покрыта тестами с моками R2/DB, риск низкий).
 
 ### Отложено / маркеры на будущее
 
-- TBD
+- `TODO(plan-3+)` в `src/lib/images/validate.ts` — HEIC/HEIF через `heic-convert`.
+- `TODO(plan-3+)` в `tests/storage/normalize.test.ts` — реальная EXIF orientation=6 фикстура (sharp не пишет EXIF, нужна CC0 картинка из libexif-tests).
+- `TODO(plan-4)` в `drizzle/schema.ts` — FK `uploads.post_id → posts.id ON DELETE SET NULL`.
+- `TODO(plan-6)` в `scripts/cleanup-orphan-uploads.ts` — cron sidecar в docker-compose.
 
 ### Готовность к plan-04
 
 - `buildImageToolConfig()` экспортируется — plan-04 кладёт в `new EditorJS({ tools: { image: ... } })`.
-- `/api/upload` готов к multipart от Editor.js image-block, контракт ответа совпадает с `@editorjs/image ≥2.10`.
+- `/api/upload` готов к multipart от Editor.js image-block, контракт ответа совпадает с `@editorjs/image ≥2.10` (`{ success: 1, file: { url, width, height } }`).
 - `uploads.post_id` — nullable text без FK; plan-04 добавит FK миграцией и логику линковки при `publishPost`.
 - `next/image` whitelist для R2 host работает — plan-04 страница поста использует `<Image>` для иллюстраций.
 - ULID-генератор (`src/lib/auth/id.ts`) переиспользуется в plan-04 для `posts.id`.
+- Индекс `uploads_post_idx` уже есть → plan-04 linker-запрос `UPDATE uploads SET post_id = ? WHERE public_url IN (?)` будет быстрым.

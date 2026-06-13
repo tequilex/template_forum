@@ -34,19 +34,12 @@ pnpm dev
 
 Сайт доступен на http://localhost:3000.
 
-### OAuth для dev (опционально, но как минимум один провайдер)
+### OAuth для dev (опционально)
 
-Самый быстрый — **GitHub**:
-1. https://github.com/settings/developers → «New OAuth App»
-2. Homepage URL: `http://localhost:3000`
-3. Authorization callback URL: `http://localhost:3000/api/auth/callback/github`
-4. Сохрани Client ID и сгенерируй Client Secret
-5. В `.env` раскомментируй `GITHUB_CLIENT_ID=...` и `GITHUB_CLIENT_SECRET=...` и впиши значения
-6. Рестарт `pnpm dev`
+Доступны только провайдеры, разрешённые в РФ: **Yandex** (через NextAuth) и **VK ID** (кастомный роут, единый шлюз для VK / Mail.ru / OK).
 
-`curl http://localhost:3000/api/auth/providers` теперь отдаёт `{"github":{...}}`, на `/login` появится кнопка.
-
-Для prod-ниши настраивай Google + Yandex + VK + GitHub по той же схеме, callback URL: `https://<домен>/api/auth/callback/<provider>`.
+- Yandex: https://oauth.yandex.ru/client/new → callback `http://localhost:3000/api/auth/callback/yandex`. Заполни `YANDEX_CLIENT_ID` / `YANDEX_CLIENT_SECRET` в `.env`.
+- VK ID: https://id.vk.com/about/business/go → callback `http://localhost:3000/api/oauth/vk/callback`. Заполни `VK_CLIENT_ID` / `VK_CLIENT_SECRET` в `.env`.
 
 ## Команды
 
@@ -59,6 +52,7 @@ pnpm dev
 | `pnpm db:generate` | Drizzle: генерация миграции из schema.ts |
 | `pnpm db:migrate` | Drizzle: применить миграции |
 | `pnpm db:studio` | Drizzle Studio (GUI для БД) |
+| `pnpm cleanup:orphans [--dry-run]` | Удалить uploads без `post_id`, старше 7 дней (R2 + DB) |
 
 ## Полный стек локально (Docker)
 
@@ -86,3 +80,18 @@ CLI-визард для форка: `pnpm new-niche` (план 6).
 ## Деплой
 
 См. [docs/superpowers/specs/2026-06-05-skelet-blog-design.md](docs/superpowers/specs/2026-06-05-skelet-blog-design.md) → раздел «Деплой».
+
+## sharp на Linux x64 (Hetzner)
+
+При прод-сборке на Linux x64 Hetzner-машине `pnpm install` подтягивает `@img/sharp-linux-x64`
+автоматически. Если в Docker-образе используется multi-platform build и кто-то соберёт
+на M-серии Mac под `--platform linux/amd64`, может потребоваться:
+
+```bash
+pnpm install --config.platform=linux --config.arch=x64
+```
+
+Или установка переменной `SHARP_IGNORE_GLOBAL_LIBVIPS=1` перед `pnpm install`,
+если на хост-системе живёт несовместимая глобальная libvips.
+
+Подробности — `node_modules/sharp/install/check.js` после `pnpm install`.
