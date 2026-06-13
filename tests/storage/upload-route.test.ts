@@ -48,7 +48,7 @@ const withEnv = <T>(extra: Record<string, string>, fn: () => Promise<T>): Promis
 
 const makeReq = (file: Buffer, filename: string, mime: string) => {
   const form = new FormData();
-  form.append("image", new Blob([file], { type: mime }), filename);
+  form.append("image", new Blob([new Uint8Array(file)], { type: mime }), filename);
   return new Request("http://localhost:3000/api/upload", { method: "POST", body: form });
 };
 
