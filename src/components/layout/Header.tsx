@@ -3,13 +3,17 @@ import { Menu } from "lucide-react";
 import { content } from "@/theme/content";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { auth } from "@/lib/auth";
+import { UserMenu } from "@/components/auth/UserMenu";
 
-export function Header() {
-  // TODO(plan-2): /login переключить на <Link> когда появится auth-роут
+export async function Header() {
   // TODO(plan-4): /tags переключить на <Link> когда появится список тегов
+  const session = await auth();
+  const user = session?.user;
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-header/95 backdrop-blur supports-[backdrop-filter]:bg-header/90">
       <div className="container mx-auto flex h-14 items-center justify-between px-4 max-w-[1200px]">
         <Link href="/" className="font-display text-lg font-semibold text-foreground">
           {content.site.name}
@@ -26,9 +30,17 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button asChild variant="default" size="sm" className="hidden md:inline-flex">
-            <a href="/login">{content.nav.login}</a>
-          </Button>
+          {user?.username ? (
+            <UserMenu username={user.username} name={user.name ?? null} image={user.image ?? null} />
+          ) : user ? (
+            <Button asChild variant="default" size="sm" className="hidden md:inline-flex">
+              <Link href="/welcome">{content.auth.chooseUsername}</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="default" size="sm" className="hidden md:inline-flex">
+              <Link href="/login">{content.nav.login}</Link>
+            </Button>
+          )}
 
           <Sheet>
             <SheetTrigger asChild>
@@ -39,9 +51,19 @@ export function Header() {
             <SheetContent side="right">
               <SheetTitle className="sr-only">Меню</SheetTitle>
               <nav className="flex flex-col gap-4 mt-8">
-                <Link href="/" className="text-base text-foreground">{content.nav.home}</Link>
-                <a href="/tags" className="text-base text-foreground">{content.nav.tags}</a>
-                <a href="/login" className="text-base text-foreground">{content.nav.login}</a>
+                <SheetClose asChild>
+                  <Link href="/" className="text-base text-foreground">{content.nav.home}</Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="/tags" className="text-base text-foreground">{content.nav.tags}</a>
+                </SheetClose>
+                <SheetClose asChild>
+                  {user?.username
+                    ? <Link href={`/u/${user.username}`} className="text-base text-foreground">@{user.username}</Link>
+                    : user
+                      ? <Link href="/welcome" className="text-base text-foreground">{content.auth.chooseUsername}</Link>
+                      : <Link href="/login" className="text-base text-foreground">{content.nav.login}</Link>}
+                </SheetClose>
               </nav>
             </SheetContent>
           </Sheet>

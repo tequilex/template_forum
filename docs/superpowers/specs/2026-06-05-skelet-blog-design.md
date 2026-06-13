@@ -229,10 +229,11 @@ skelet/
 ┌───────────────────────────────────────────────────────────────────┐
 │ Уровень 2: NICHE TOKENS (меняются на нишу)                        │
 │   Цвета:    --color-background, --color-foreground,               │
+│             --color-card, --color-card-fg,                        │
 │             --color-primary, --color-primary-fg,                  │
 │             --color-accent, --color-muted, --color-muted-fg,      │
 │             --color-border, --color-ring, --color-danger          │
-│   Радиусы:  --radius-sm, --radius-md, --radius-lg                 │
+│   Радиусы:  --radius-sm, --radius-md, --radius-lg, --radius-pill  │
 │   Шрифты:   --font-display, --font-text                           │
 │   → theme/tokens.css + theme/typography.css                       │
 └───────────────────────────────────────────────────────────────────┘
@@ -245,45 +246,58 @@ skelet/
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2. `theme/tokens.css` — пример (ниша «ПК-сборщики»)
+### 5.2. `theme/tokens.css` — пример
 
 ```css
 :root {
-  --color-background: 0 0% 100%;
-  --color-foreground: 222 47% 11%;
-  --color-primary: 217 91% 60%;
-  --color-primary-fg: 0 0% 100%;
-  --color-accent: 280 70% 55%;
-  --color-muted: 220 14% 96%;
-  --color-muted-fg: 220 9% 46%;
-  --color-border: 220 13% 91%;
-  --color-ring: 217 91% 60%;
-  --color-danger: 0 84% 60%;
+  --color-background: #FFFFFF;
+  --color-foreground: #17171C;
+  --color-card:       #F6F6F8;
+  --color-card-fg:    #17171C;
+  --color-primary:    #2970FF;
+  --color-primary-fg: #FFFFFF;
+  --color-accent:     #2970FF;
+  --color-muted:      #F1F1F3;
+  --color-muted-fg:   #71717A;
+  --color-border:     #E3E3E7;
+  --color-ring:       #2970FF;
+  --color-danger:     #EF4444;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
 }
 
 .dark {
-  --color-background: 222 47% 6%;
-  --color-foreground: 0 0% 98%;
-  --color-primary: 217 91% 65%;
-  --color-primary-fg: 222 47% 6%;
-  --color-muted: 220 14% 14%;
-  --color-muted-fg: 220 9% 60%;
-  --color-border: 220 13% 18%;
-  --color-ring: 217 91% 65%;
-  /* остальное — наследуется или переопределяется */
+  --color-background: #101013;
+  --color-foreground: #E8E8EB;
+  --color-card:       #1A1A1E;
+  --color-card-fg:    #E8E8EB;
+  --color-primary:    #3D7EFF;
+  --color-primary-fg: #FFFFFF;
+  --color-accent:     #3D7EFF;
+  --color-muted:      #222225;
+  --color-muted-fg:   #94949B;
+  --color-border:     #26262B;
+  --color-ring:       #3D7EFF;
+  --color-danger:     #DD4242;
 }
 ```
 
-Цвета в HSL без обёртки `hsl()`, чтобы Tailwind мог обернуть с поддержкой прозрачности: `hsl(var(--color-primary) / <alpha-value>)`. Тогда `bg-primary/20` работает.
+Цвета — обычный hex (`#RRGGBB`), IDE сразу подсвечивает превью. Альфа применяется через `color-mix(...)` в [tailwind.config.ts](../../../tailwind.config.ts), а не в самих токенах. Это даёт `bg-primary/20`, `bg-background/95` и т.п.
+
+Когда-то здесь был «HSL-без-обёртки» формат (`220 100% 58%`) ради `<alpha-value>`-плейсхолдера Tailwind. Отказались: VSCode такие триплеты не подсвечивает, читать сложнее. `color-mix(in srgb, ...)` стабилен во всех современных браузерах и решает обе проблемы.
 
 ### 5.3. `tailwind.config.ts` — маппинг утилит на токены
 
 ```ts
 import type { Config } from "tailwindcss";
+
+// Цвета лежат в --color-* как чистый hex (IDE подсвечивает превью).
+// Альфу подмешиваем через color-mix — Tailwind подставит <alpha-value> в момент сборки.
+const c = (name: string) =>
+  `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`;
 
 export default {
   content: ["./src/**/*.{ts,tsx}", "./theme/**/*.{ts,css}"],
@@ -291,25 +305,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "hsl(var(--color-background) / <alpha-value>)",
-        foreground: "hsl(var(--color-foreground) / <alpha-value>)",
+        background: c("--color-background"),
+        foreground: c("--color-foreground"),
         primary: {
-          DEFAULT: "hsl(var(--color-primary) / <alpha-value>)",
-          foreground: "hsl(var(--color-primary-fg) / <alpha-value>)",
+          DEFAULT:    c("--color-primary"),
+          foreground: c("--color-primary-fg"),
         },
-        accent: "hsl(var(--color-accent) / <alpha-value>)",
+        accent: c("--color-accent"),
+        card: {
+          DEFAULT:    c("--color-card"),
+          foreground: c("--color-card-fg"),
+        },
         muted: {
-          DEFAULT: "hsl(var(--color-muted) / <alpha-value>)",
-          foreground: "hsl(var(--color-muted-fg) / <alpha-value>)",
+          DEFAULT:    c("--color-muted"),
+          foreground: c("--color-muted-fg"),
         },
-        border: "hsl(var(--color-border) / <alpha-value>)",
-        ring: "hsl(var(--color-ring) / <alpha-value>)",
-        destructive: "hsl(var(--color-danger) / <alpha-value>)",
+        border: c("--color-border"),
+        ring:   c("--color-ring"),
+        destructive: c("--color-danger"),
       },
       borderRadius: {
         sm: "var(--radius-sm)",
         md: "var(--radius-md)",
         lg: "var(--radius-lg)",
+        pill: "var(--radius-pill)",
       },
       fontFamily: {
         display: "var(--font-display)",
@@ -318,6 +337,11 @@ export default {
     },
   },
 } satisfies Config;
+```
+
+Результирующий CSS для `bg-primary/50`:
+```css
+background-color: color-mix(in srgb, var(--color-primary) calc(.5 * 100%), transparent);
 ```
 
 ### 5.4. Контракт обязательных токенов

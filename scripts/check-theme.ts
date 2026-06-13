@@ -1,6 +1,9 @@
 export const REQUIRED_TOKENS = [
   "--color-background",
   "--color-foreground",
+  "--color-header",
+  "--color-card",
+  "--color-card-fg",
   "--color-primary",
   "--color-primary-fg",
   "--color-accent",
@@ -12,6 +15,7 @@ export const REQUIRED_TOKENS = [
   "--radius-sm",
   "--radius-md",
   "--radius-lg",
+  "--radius-pill",
   "--font-display",
   "--font-text",
 ] as const;
