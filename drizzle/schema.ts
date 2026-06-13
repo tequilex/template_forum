@@ -1,5 +1,5 @@
 import {
-  pgTable, text, varchar, integer, timestamp, pgEnum,
+  pgTable, text, varchar, integer, bigint, timestamp, pgEnum,
   index, primaryKey,
 } from "drizzle-orm/pg-core";
 
@@ -51,4 +51,24 @@ export const verificationTokens = pgTable("verification_tokens", {
   expires: timestamp("expires").notNull(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.identifier, t.token] }),
+}));
+
+// uploads — изображения, нормализованные через /api/upload и положенные в R2.
+// TODO(plan-4): добавить FK на posts.id миграцией
+//   ALTER TABLE uploads ADD CONSTRAINT uploads_post_fk
+//     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL;
+export const uploads = pgTable("uploads", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  postId: text("post_id"),
+  key: text("key").notNull().unique(),
+  publicUrl: text("public_url").notNull(),
+  mime: varchar("mime", { length: 60 }).notNull(),
+  size: bigint("size", { mode: "number" }).notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("uploads_user_idx").on(t.userId, t.createdAt),
+  postIdx: index("uploads_post_idx").on(t.postId),
 }));
