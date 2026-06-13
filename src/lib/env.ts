@@ -12,6 +12,12 @@ const schema = z.object({
   YANDEX_CLIENT_SECRET: z.string().min(1).optional(),
   VK_CLIENT_ID: z.string().min(1).optional(),
   VK_CLIENT_SECRET: z.string().min(1).optional(),
+
+  R2_ENDPOINT:          z.string().url().optional(),
+  R2_BUCKET:            z.string().min(1).optional(),
+  R2_ACCESS_KEY_ID:     z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  R2_PUBLIC_BASE:       z.string().url().optional(),
 }).superRefine((v, ctx) => {
   for (const p of ["YANDEX", "VK"] as const) {
     const id = (v as Record<string, string | undefined>)[`${p}_CLIENT_ID`];
@@ -23,6 +29,21 @@ const schema = z.object({
         message: `${p}_CLIENT_ID and ${p}_CLIENT_SECRET must be set together`,
       });
     }
+  }
+
+  const r2Keys = [
+    "R2_ENDPOINT", "R2_BUCKET", "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY", "R2_PUBLIC_BASE",
+  ] as const;
+  const r2Presence = r2Keys.map(k => Boolean((v as Record<string, string | undefined>)[k]));
+  const r2All = r2Presence.every(Boolean);
+  const r2None = r2Presence.every(p => !p);
+  if (!r2All && !r2None) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["R2_BUCKET"],
+      message: "R2_* env vars must be all set or all empty",
+    });
   }
 });
 
