@@ -10,7 +10,8 @@ export function getR2Client(): S3Client {
     throw new Error("R2 not configured");
   }
   _client = new S3Client({
-    region: "auto",
+    // Yandex Object Storage требует "ru-central1"; для R2/MinIO подходит любой непустой регион.
+    region: "ru-central1",
     endpoint: env.R2_ENDPOINT,
     credentials: {
       accessKeyId: env.R2_ACCESS_KEY_ID,
