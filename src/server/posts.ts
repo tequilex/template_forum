@@ -129,3 +129,68 @@ export async function publishPost(
 
   return { slug };
 }
+
+export async function republishPost(postId: string): Promise<void> {
+  await requireSessionUserId();
+  const post = await requireOwnPost(postId);
+
+  if (post.status !== "published") throw new Error("not_published");
+
+  const excerpt = extractPlainText(post.content as never).slice(0, 200);
+  const coverUrl = extractCoverUrl(post.content as never);
+  const contentHtml = sanitize(renderBlock(post.content as never));
+  const now = new Date();
+
+  const db = getDb();
+
+  // TODO(plan-5): diff-линкер — отвязывать post_id от uploads, чьи url'ы
+  // больше не присутствуют в content (сейчас они остаются приписанными,
+  // cleanup-script не подхватит, т.к. он работает только по post_id IS NULL).
+  const blocks = ((post.content as { blocks?: { type: string; data: { file?: { url?: string } } }[] }).blocks) ?? [];
+  const imageUrls = blocks
+    .filter(b => b.type === "image")
+    .map(b => b.data?.file?.url)
+    .filter((u): u is string => Boolean(u));
+
+  await db.transaction(async (tx) => {
+    await tx.update(posts).set({
+      excerpt,
+      coverUrl,
+      contentHtml,
+      updatedAt: now,
+    }).where(eq(posts.id, postId));
+
+    if (imageUrls.length > 0) {
+      await tx.update(uploads).set({ postId })
+        .where(and(
+          inArray(uploads.publicUrl, imageUrls),
+          eq(uploads.userId, post.authorId),
+        ));
+    }
+  });
+}
+
+export async function archivePost(postId: string): Promise<void> {
+  await requireSessionUserId();
+  const post = await requireOwnPost(postId);
+  if (post.status !== "published") throw new Error("cannot_archive");
+  await getDb().update(posts).set({ status: "archived", updatedAt: new Date() })
+    .where(eq(posts.id, postId));
+}
+
+export async function unarchivePost(postId: string): Promise<void> {
+  await requireSessionUserId();
+  const post = await requireOwnPost(postId);
+  if (post.status !== "archived") throw new Error("cannot_unarchive");
+  // archived → draft напрямую не идём (V1 ограничение). unarchive = всегда published.
+  await getDb().update(posts).set({ status: "published", updatedAt: new Date() })
+    .where(eq(posts.id, postId));
+}
+
+export async function softDeletePost(postId: string): Promise<void> {
+  await requireSessionUserId();
+  await requireOwnPost(postId);                // фильтрует уже-deleted → notFound
+  // content_html НЕ зануляется — для возможного admin-restore в plan-05.
+  await getDb().update(posts).set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(posts.id, postId));
+}

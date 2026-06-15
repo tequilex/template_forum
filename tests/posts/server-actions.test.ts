@@ -142,3 +142,67 @@ describe("publishPost", () => {
     await expect(publishPost("POST01", ["TAGBOGUS"])).rejects.toThrow(/bad_tags/);
   });
 });
+
+import { republishPost, archivePost, unarchivePost, softDeletePost } from "@/server/posts";
+
+describe("republishPost", () => {
+  it("happy: пересчитывает excerpt/coverUrl/contentHtml, slug не трогает", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{
+      id: "POST01", authorId: "USER01", status: "published", deletedAt: null,
+      title: "Hello", slug: "hello",
+      content: { blocks: [{ type: "paragraph", data: { text: "обновл" } }] },
+    }]));
+    mockDb.transaction.mockImplementation(async (cb: any) => {
+      await cb({ update: () => fluentUpdate() });
+    });
+    await expect(republishPost("POST01")).resolves.toBeUndefined();
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("status !== published → not_published", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{
+      id: "POST01", authorId: "USER01", status: "draft", deletedAt: null,
+      title: "X", content: { blocks: [] },
+    }]));
+    await expect(republishPost("POST01")).rejects.toThrow(/not_published/);
+  });
+});
+
+describe("archivePost", () => {
+  it("happy", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "published", deletedAt: null }]));
+    mockDb.update.mockReturnValueOnce(fluentUpdate());
+    await expect(archivePost("POST01")).resolves.toBeUndefined();
+  });
+
+  it("из draft нельзя → cannot_archive", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "draft", deletedAt: null }]));
+    await expect(archivePost("POST01")).rejects.toThrow(/cannot_archive/);
+  });
+});
+
+describe("unarchivePost", () => {
+  it("happy", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "archived", deletedAt: null }]));
+    mockDb.update.mockReturnValueOnce(fluentUpdate());
+    await expect(unarchivePost("POST01")).resolves.toBeUndefined();
+  });
+
+  it("не archived → cannot_unarchive", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "draft", deletedAt: null }]));
+    await expect(unarchivePost("POST01")).rejects.toThrow(/cannot_unarchive/);
+  });
+});
+
+describe("softDeletePost", () => {
+  it("happy", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "draft", deletedAt: null }]));
+    mockDb.update.mockReturnValueOnce(fluentUpdate());
+    await expect(softDeletePost("POST01")).resolves.toBeUndefined();
+  });
+
+  it("уже удалён → notFound (через requireOwnPost)", async () => {
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([])); // requireOwnPost не находит (isNull deletedAt)
+    await expect(softDeletePost("POST01")).rejects.toThrow();
+  });
+});
