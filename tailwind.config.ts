@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
+import typography from "@tailwindcss/typography";
 
 // Цвета лежат в --color-* как чистый hex (IDE подсвечивает превью).
 // Альфу подмешиваем через color-mix — Tailwind подставит <alpha-value> в момент сборки.
@@ -57,5 +58,5 @@ export default {
       },
     },
   },
-  plugins: [animate],
+  plugins: [animate, typography],
 } satisfies Config;
