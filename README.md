@@ -54,6 +54,24 @@ pnpm dev
 | `pnpm db:studio` | Drizzle Studio (GUI для БД) |
 | `pnpm cleanup:orphans [--dry-run]` | Удалить uploads без `post_id`, старше 7 дней (R2 + DB) |
 
+## Маршруты (plan-04)
+
+- `/new` — создание поста (требует логин). Редактор Editor.js с автосейвом.
+- `/edit/[id]` — редактирование своего поста (404 на чужой / soft-deleted).
+- `/drafts` — список моих черновиков и архива (табы `?tab=drafts|archived`).
+- `/p/[slug]` — публичная страница поста. Видимость:
+  - draft → 404
+  - published → 200 (всем)
+  - archived → 200 только автору, остальным 404
+  - soft-deleted → 410 (разметка «удалён»; точный HTTP-status — plan-06)
+
+### Seed-тэги (миграция 0002)
+
+При первой миграции в `tags` создаётся 6 generic тэгов: experience, question,
+news, review, opinion, lifehack. Для своей ниши переписать INSERTs в
+`drizzle/migrations/0002_*.sql` **до первого деплоя** — после деплоя тэги уже
+будут использоваться в постах и менять их PK небезопасно.
+
 ## Полный стек локально (Docker)
 
 ```bash
