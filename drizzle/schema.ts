@@ -1,5 +1,5 @@
 import {
-  pgTable, text, varchar, integer, bigint, timestamp, pgEnum,
+  pgTable, text, varchar, integer, bigint, timestamp, pgEnum, jsonb,
   index, primaryKey,
 } from "drizzle-orm/pg-core";
 
@@ -53,14 +53,51 @@ export const verificationTokens = pgTable("verification_tokens", {
   pk: primaryKey({ columns: [t.identifier, t.token] }),
 }));
 
-// uploads — изображения, нормализованные через /api/upload и положенные в R2.
-// TODO(plan-4): добавить FK на posts.id миграцией
-//   ALTER TABLE uploads ADD CONSTRAINT uploads_post_fk
-//     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL;
+export const postStatus = pgEnum("post_status", ["draft", "published", "archived"]);
+
+// posts — основной контент проекта. content (JSONB) — Editor.js OutputData;
+// content_html — серверный кеш для public-страниц, регенерится только в publishPost/republishPost.
+export const posts = pgTable("posts", {
+  id: text("id").primaryKey(),                          // ULID, newId()
+  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  slug: varchar("slug", { length: 80 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
+  excerpt: varchar("excerpt", { length: 280 }),
+  content: jsonb("content").notNull(),                  // Editor.js OutputData
+  contentHtml: text("content_html"),                    // null до publishPost
+  coverUrl: text("cover_url"),                          // первый image-блок из content
+  status: postStatus("status").notNull().default("draft"),
+  pubAt: timestamp("pub_at"),                           // null до publishPost
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (t) => ({
+  feedIdx: index("posts_feed_idx").on(t.status, t.pubAt),
+  authorIdx: index("posts_author_idx").on(t.authorId),
+}));
+
+// tags — 6 generic seed-тэгов (миграция 0002). Admin-UI для добавления — plan-05+.
+export const tags = pgTable("tags", {
+  id: text("id").primaryKey(),
+  slug: varchar("slug", { length: 40 }).notNull().unique(),
+  name: varchar("name", { length: 60 }).notNull(),
+  description: text("description"),
+});
+
+// post_tags — m2m posts↔tags. tag_idx добавлен для будущей tag-page (plan-05).
+export const postTags = pgTable("post_tags", {
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  tagId: text("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.postId, t.tagId] }),
+  tagIdx: index("post_tags_tag_idx").on(t.tagId, t.postId),
+}));
+
+// uploads — изображения, нормализованные через /api/upload и положенные в Yandex storage.
 export const uploads = pgTable("uploads", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  postId: text("post_id"),
+  postId: text("post_id").references(() => posts.id, { onDelete: "set null" }),
   key: text("key").notNull().unique(),
   publicUrl: text("public_url").notNull(),
   mime: varchar("mime", { length: 60 }).notNull(),
