@@ -1,0 +1,59 @@
+/* §15.7 mobile-полишинг Editor.js. Импортируется только в EditorClient.tsx. */
+
+@media (max-width: 768px) {
+  /* §15.7 #1: дефолтный тулбар Editor.js пристёгнут слева к блоку — на узких
+   * экранах перекрывает контент. Делаем floating top sticky. */
+  .codex-editor .ce-toolbar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    background: var(--background, white);
+    z-index: 10;
+    transform: none !important;
+    width: 100%;
+  }
+  .codex-editor .ce-toolbar__plus,
+  .codex-editor .ce-toolbar__settings-btn {
+    /* увеличиваем тач-таргеты до 44px (DoD §15.11) */
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* §15.7 #4: Save-bar занимает нижнюю полосу. Pad-bottom = высота bar + safe-area. */
+  .codex-editor {
+    padding-bottom: 80px;
+  }
+}
+
+/* Заглушаем дефолтный "+" слева — на mobile мы покажем floating "+" внизу-справа
+ * (см. §15.7 #2 и EditorClient.tsx). */
+@media (max-width: 768px) {
+  .codex-editor .ce-toolbar__plus {
+    display: none;
+  }
+}
+
+/* Floating "+" — рендерится в EditorClient как отдельный <button>;
+ * стилизация общая (выше StickySaveBar). */
+.editor-floating-plus {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  background: var(--primary, #000);
+  color: var(--primary-foreground, white);
+  font-size: 24px;
+  line-height: 1;
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+@media (min-width: 769px) {
+  .editor-floating-plus {
+    display: none;
+  }
+}
