@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { TagPicker } from "@/components/ui/TagPicker";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SaveIndicator } from "./SaveIndicator";
-import { StickySaveBar } from "./StickySaveBar";
 import {
   saveDraft, publishPost, republishPost,
   archivePost, unarchivePost, softDeletePost,
@@ -39,7 +38,6 @@ export function EditorClient(props: Props) {
   });
   const [, startTransition] = useTransition();
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mobileFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -149,22 +147,6 @@ export function EditorClient(props: Props) {
   const onArchive = async () => { if (postId) { await archivePost(postId); router.push({ pathname: "/drafts", query: { tab: "archived" } } as never); } };
   const onDelete = async  () => { if (postId) { await softDeletePost(postId); router.push("/drafts"); } };
 
-  const openMobileCamera = () => mobileFileRef.current?.click();
-  const onMobileFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    try {
-      const form = new FormData();
-      form.append("image", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const body = await res.json();
-      if (body?.success !== 1) { alert(`Загрузка не удалась: ${body?.error ?? "unknown"}`); return; }
-      await editorRef.current?.blocks?.insert("image", { file: body.file, caption: "" });
-      scheduleSave();
-    } catch (err) { alert(`Сеть: ${String(err)}`); }
-  };
-
   const primaryButton = (() => {
     if (props.status === "draft") {
       return <Button onClick={onPublish}>Опубликовать</Button>;
@@ -179,7 +161,7 @@ export function EditorClient(props: Props) {
   })();
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-6 pb-32 md:pb-12">
+    <main className="container mx-auto max-w-3xl px-4 py-6 pb-12">
       <input
         type="text"
         value={title}
@@ -197,31 +179,10 @@ export function EditorClient(props: Props) {
 
       <div id={holderId} className="codex-editor min-h-[400px]" />
 
-      {/* Mobile floating "+" — слэш-меню (§15.7 #2) */}
-      <button
-        type="button"
-        className="editor-floating-plus"
-        aria-label="Добавить блок"
-        onClick={() => editorRef.current?.blocks?.insert?.("paragraph")}
-      >
-        +
-      </button>
-
-      {/* Hidden mobile camera input (§15.7 #3) */}
-      <input
-        ref={mobileFileRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onMobileFileChosen}
-      />
-
-      {/* Desktop action-bar */}
-      <div className="hidden md:flex items-center justify-between mt-6 pt-4 border-t border-border">
+      {/* Action-bar — одинаков на мобиле и десктопе. */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 pt-4 border-t border-border">
         <SaveIndicator state={saveState.state} at={saveState.at} />
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={openMobileCamera}>Камера</Button>
+        <div className="flex flex-wrap gap-2">
           {props.status === "published" && postId && (
             <ConfirmDialog
               trigger={<Button variant="outline">Архивировать</Button>}
@@ -245,9 +206,6 @@ export function EditorClient(props: Props) {
           {primaryButton}
         </div>
       </div>
-
-      {/* Mobile sticky save bar */}
-      <StickySaveBar saveState={saveState.state} savedAt={saveState.at} primaryAction={primaryButton} />
     </main>
   );
 }

@@ -1,59 +1,92 @@
-/* §15.7 mobile-полишинг Editor.js. Импортируется только в EditorClient.tsx. */
+/* Стили для Editor.js. Импортируется только в EditorClient.tsx.
+ *
+ * Принцип: Editor.js сам рассчитывает позицию `.ce-toolbar`/`.ce-toolbox`/popover
+ * через инлайн CSS и JS-замеры. Не трогаем layout их элементов — только цвет
+ * иконок (для видимости на тёмной теме) и визуальные стили блоков. */
 
-@media (max-width: 768px) {
-  /* §15.7 #1: дефолтный тулбар Editor.js пристёгнут слева к блоку — на узких
-   * экранах перекрывает контент. Делаем floating top sticky. */
-  .codex-editor .ce-toolbar {
-    position: sticky;
-    top: 0;
-    left: 0;
-    background: var(--background, white);
-    z-index: 10;
-    transform: none !important;
-    width: 100%;
-  }
+/* === Видимость иконок тулбара на тёмной теме ===
+ * Дефолт Editor.js: color: #1d202b и fill в SVG-разметке тоже #1d202b.
+ * Editor.js ставит path { stroke: currentColor }, но иконки залиты через
+ * fill — на тёмной теме они остаются тёмными и сливаются с hover-фоном.
+ * Форсим fill: currentColor, чтобы иконки наследовали наш --color-foreground. */
+.codex-editor .ce-toolbar__plus,
+.codex-editor .ce-toolbar__settings-btn {
+  color: black; /* для светлой темы */
+}
+.codex-editor .ce-toolbar__plus svg,
+.codex-editor .ce-toolbar__plus svg path,
+.codex-editor .ce-toolbar__settings-btn svg,
+.codex-editor .ce-toolbar__settings-btn svg path {
+  fill: currentColor;
+}
+
+/* === Mobile: убираем "карточку" Editor.js, оставляем стиль десктопа ===
+ * При viewport ≤ 650px Editor.js рисует кнопки +/⋯ как белые карточки с
+ * бордером и box-shadow (см. editorjs.mjs). На тёмной теме это смотрится
+ * чужеродно. Приводим к виду десктопа: прозрачная иконка + hover-фон из
+ * темы. Размер 44px для тач-таргета (DoD §15.11). */
+@media (max-width: 650px) {
   .codex-editor .ce-toolbar__plus,
   .codex-editor .ce-toolbar__settings-btn {
-    /* увеличиваем тач-таргеты до 44px (DoD §15.11) */
-    min-width: 44px;
-    min-height: 44px;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 44px;
+    height: 44px;
+    border-radius: 7px;
   }
-
-  /* §15.7 #4: Save-bar занимает нижнюю полосу. Pad-bottom = высота bar + safe-area. */
-  .codex-editor {
-    padding-bottom: 80px;
+  .codex-editor .ce-toolbar__plus:hover,
+  .codex-editor .ce-toolbar__settings-btn:hover {
+    background-color: var(--color-muted);
+  }
+  .codex-editor .ce-toolbar__plus svg,
+  .codex-editor .ce-toolbar__settings-btn svg {
+    width: 24px;
+    height: 24px;
   }
 }
 
-/* Заглушаем дефолтный "+" слева — на mobile мы покажем floating "+" внизу-справа
- * (см. §15.7 #2 и EditorClient.tsx). */
-@media (max-width: 768px) {
-  .codex-editor .ce-toolbar__plus {
-    display: none;
-  }
+/* === Стили блоков прямо в редакторе ===
+ * Editor.js не приносит визуальных стилей контента — H2/H3/quote/list
+ * выглядят как обычный параграф. Дублируем минимум из PostBody (prose),
+ * чтобы автор сразу видел результат форматирования. */
+.codex-editor .ce-block__content h2,
+.codex-editor .ce-header[data-level="2"] {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  font-weight: 700;
+  margin: 1.25em 0 0.5em;
 }
-
-/* Floating "+" — рендерится в EditorClient как отдельный <button>;
- * стилизация общая (выше StickySaveBar). */
-.editor-floating-plus {
-  position: fixed;
-  right: 1rem;
-  bottom: calc(80px + env(safe-area-inset-bottom));
-  width: 48px;
-  height: 48px;
-  border-radius: 24px;
-  background: var(--primary, #000);
-  color: var(--primary-foreground, white);
-  font-size: 24px;
-  line-height: 1;
-  z-index: 41;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.codex-editor .ce-block__content h3,
+.codex-editor .ce-header[data-level="3"] {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+  font-weight: 700;
+  margin: 1em 0 0.4em;
 }
-@media (min-width: 769px) {
-  .editor-floating-plus {
-    display: none;
-  }
+.codex-editor .ce-block__content h4,
+.codex-editor .ce-header[data-level="4"] {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+}
+.codex-editor .cdx-quote {
+  border-left: 3px solid var(--color-border);
+  padding-left: 1rem;
+  font-style: italic;
+  color: var(--color-muted-fg);
+}
+.codex-editor .cdx-list--unordered { list-style: disc;    padding-left: 1.5rem; }
+.codex-editor .cdx-list--ordered   { list-style: decimal; padding-left: 1.5rem; }
+.codex-editor .ce-delimiter::before {
+  content: "* * *";
+  display: block;
+  text-align: center;
+  letter-spacing: 1em;
+  color: var(--color-muted-fg);
+  margin: 1.5rem 0;
 }
