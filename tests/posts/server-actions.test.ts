@@ -40,6 +40,7 @@ const fluentInsert = () => ({ values: vi.fn().mockResolvedValue(undefined) });
 const fluentUpdate = () => ({
   set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
 });
+const fluentDelete = () => ({ where: vi.fn().mockResolvedValue(undefined) });
 const fluentSelectReturn = (rows: unknown[]) => {
   const whereResult: any = Promise.resolve(rows);
   whereResult.limit = () => Promise.resolve(rows);
@@ -58,19 +59,30 @@ describe("saveDraft", () => {
   });
 
   it("postId=null → INSERT с новым ULID", async () => {
-    mockDb.insert.mockReturnValueOnce(fluentInsert());
+    // saveDraft теперь оборачивает posts+post_tags INSERT'ы в transaction.
+    const txInsert = vi.fn(() => fluentInsert());
+    mockDb.transaction.mockImplementationOnce(async (cb: any) => {
+      await cb({ insert: txInsert });
+    });
     const out = await saveDraft(null, "Новый пост", { blocks: [] });
     expect(out.postId).toBe("01J0NEW000000000000000000ID");
-    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+    expect(txInsert).toHaveBeenCalledTimes(1); // только posts (tagIds=[] → tags insert skip)
   });
 
   it("postId !== null → UPDATE без смены статуса", async () => {
     // requireOwnPost вернёт строку
     mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", authorId: "USER01", status: "draft", deletedAt: null }]));
-    mockDb.update.mockReturnValueOnce(fluentUpdate());
+    const txUpdate = vi.fn(() => fluentUpdate());
+    const txDelete = vi.fn(() => fluentDelete());
+    mockDb.transaction.mockImplementationOnce(async (cb: any) => {
+      await cb({ update: txUpdate, delete: txDelete, insert: () => fluentInsert() });
+    });
     const out = await saveDraft("POST01", "обновлённый", { blocks: [] });
     expect(out.postId).toBe("POST01");
-    expect(mockDb.update).toHaveBeenCalledTimes(1);
+    expect(txUpdate).toHaveBeenCalledTimes(1);
+    // draft → теги пере-выставляем (delete для пустого tagIds[], insert skip).
+    expect(txDelete).toHaveBeenCalledTimes(1);
   });
 
   it("postId чужой → notFound (через requireOwnPost)", async () => {
@@ -91,6 +103,7 @@ describe("publishPost", () => {
       await cb({
         update: () => fluentUpdate(),
         insert: () => fluentInsert(),
+        delete: () => fluentDelete(),
       });
     });
   });

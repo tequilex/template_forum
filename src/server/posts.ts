@@ -30,37 +30,62 @@ async function requireSessionUserId(): Promise<string> {
   return session.user.id;
 }
 
+// saveDraft принимает tagIds (deviation от §5.1 спеки — там были только
+// postId/title/content). Без autosave тегов автор терял выбранные категории
+// после refresh, и draft-страница каждый раз показывала пустой TagPicker.
+// Для published/archived теги через saveDraft НЕ меняются (UI там readonly,
+// инвариант §6.217 спеки сохраняется): tagIds для не-draft постов
+// игнорируются и список post_tags не трогаем.
+const tagIdsSchema = z.array(z.string()).max(20);
+
 export async function saveDraft(
   postId: string | null,
   title: string,
   content: unknown,
+  tagIds: string[] = [],
 ): Promise<{ postId: string; updatedAt: Date }> {
   const userId = await requireSessionUserId();
   const parsedTitle = titleSchema.parse(title);
   const parsedContent = outputDataSchema.parse(content);
+  const parsedTagIds = tagIdsSchema.parse(tagIds);
   const db = getDb();
   const now = new Date();
 
   if (postId !== null) {
-    await requireOwnPost(postId);
-    await db.update(posts).set({
-      title: parsedTitle,
-      content: parsedContent,
-      updatedAt: now,
-    }).where(eq(posts.id, postId));
+    const existing = await requireOwnPost(postId);
+    await db.transaction(async (tx) => {
+      await tx.update(posts).set({
+        title: parsedTitle,
+        content: parsedContent,
+        updatedAt: now,
+      }).where(eq(posts.id, postId));
+      // Теги пишем только если пост ещё в draft. На published/archived
+      // изменение тегов запрещено (§217: tag changes — это plan-05+).
+      if (existing.status === "draft") {
+        await tx.delete(postTags).where(eq(postTags.postId, postId));
+        if (parsedTagIds.length > 0) {
+          await tx.insert(postTags).values(parsedTagIds.map(tagId => ({ postId, tagId })));
+        }
+      }
+    });
     return { postId, updatedAt: now };
   }
 
   const id = newId();
-  await db.insert(posts).values({
-    id,
-    authorId: userId,
-    slug: `draft-${id}`,
-    title: parsedTitle,
-    content: parsedContent,
-    status: "draft",
-    createdAt: now,
-    updatedAt: now,
+  await db.transaction(async (tx) => {
+    await tx.insert(posts).values({
+      id,
+      authorId: userId,
+      slug: `draft-${id}`,
+      title: parsedTitle,
+      content: parsedContent,
+      status: "draft",
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (parsedTagIds.length > 0) {
+      await tx.insert(postTags).values(parsedTagIds.map(tagId => ({ postId: id, tagId })));
+    }
   });
   return { postId: id, updatedAt: now };
 }
@@ -116,6 +141,9 @@ export async function publishPost(
       updatedAt: now,
     }).where(eq(posts.id, postId));
 
+    // saveDraft мог уже залить теги через autosave — чистим перед insert,
+    // иначе ловим PK conflict на (post_id, tag_id).
+    await tx.delete(postTags).where(eq(postTags.postId, postId));
     await tx.insert(postTags).values(tagIds.map(tagId => ({ postId, tagId })));
 
     if (imageUrls.length > 0) {

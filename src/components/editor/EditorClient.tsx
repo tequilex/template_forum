@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TagPicker } from "@/components/ui/TagPicker";
@@ -36,11 +36,25 @@ export function EditorClient(props: Props) {
   const [saveState, setSaveState] = useState<{ state: "idle" | "saving" | "saved" | "error"; at?: Date }>({
     state: "idle",
   });
-  const [, startTransition] = useTransition();
+
+  // Refs хранят актуальные значения для автосейва — закрывают проблему
+  // stale-замыкания (debounce-таймер и in-flight save видят свежие данные).
+  const titleRef = useRef(props.initialTitle);
+  const postIdRef = useRef(props.initialPostId);
+  const tagIdsRef = useRef<string[]>(props.initialTagIds);
+  // Сериализация saves: пока inFlight, новые scheduleSave только взводят pending.
+  // Это убирает гонку, при которой два параллельных saveDraft(null, ...) создают
+  // два разных черновика на одну сессию редактирования.
+  const inFlightRef = useRef(false);
+  const pendingRef = useRef(false);
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let disposed = false;
+    // Локальная переменная нужна, чтобы корректно teardown'ить инстанс, даже
+    // если cleanup сработал до того, как `editor.isReady` зарезолвился
+    // (актуально в dev-StrictMode с двойным запуском эффектов).
+    let editorInstance: any = null;
 
     (async () => {
       const [EditorJS, Header, List, Quote, Delimiter, { buildImageToolConfig }] = await Promise.all([
@@ -54,7 +68,7 @@ export function EditorClient(props: Props) {
 
       if (disposed) return;
 
-      editorRef.current = new EditorJS({
+      editorInstance = new EditorJS({
         holder: holderId,
         data: props.initialContent,
         tools: {
@@ -67,15 +81,30 @@ export function EditorClient(props: Props) {
         onChange: scheduleSave,
         placeholder: "Начни писать…",
       });
+
+      // Методы вроде .save() доступны только после isReady. До этого момента
+      // не выставляем editorRef.current — flushSave увидит null и выйдет рано.
+      try {
+        await editorInstance.isReady;
+      } catch (e) {
+        console.error("[editor.isReady]", e);
+        return;
+      }
+
+      if (disposed) {
+        editorInstance.destroy?.();
+        return;
+      }
+
+      editorRef.current = editorInstance;
     })();
 
     return () => {
       disposed = true;
-      if (pendingTimer.current) {
-        clearTimeout(pendingTimer.current);
-        flushSave();
-      }
-      editorRef.current?.destroy?.();
+      if (pendingTimer.current) clearTimeout(pendingTimer.current);
+      // Уничтожаем тот инстанс, что был создан в этом эффекте, не глобальный ref.
+      editorInstance?.destroy?.();
+      editorRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,29 +116,55 @@ export function EditorClient(props: Props) {
 
   const flushSave = async () => {
     if (!editorRef.current) return;
+    // Если save уже в полёте — взводим pending, чтобы выполнить ещё один save
+    // после возврата (с уже актуальным postIdRef для апдейта того же поста).
+    if (inFlightRef.current) {
+      pendingRef.current = true;
+      return;
+    }
+    inFlightRef.current = true;
     try {
       const content = await editorRef.current.save();
       setSaveState({ state: "saving" });
-      startTransition(async () => {
-        try {
-          const out = await saveDraft(postId, title, content);
-          if (out.postId !== postId && postId === null) {
-            setPostId(out.postId);
-            window.history.replaceState({}, "", `/edit/${out.postId}`);
-          }
-          setSaveState({ state: "saved", at: new Date(out.updatedAt) });
-        } catch (e) {
-          setSaveState({ state: "error" });
-          console.error("[saveDraft]", e);
-        }
-      });
+      const out = await saveDraft(postIdRef.current, titleRef.current, content, tagIdsRef.current);
+      // Первый save для /new — обновляем ref сразу (до setState), чтобы
+      // следующий save (если pending) увидел уже созданный postId.
+      // URL меняем в пределах того же route-сегмента (/new?id={id}), а не на
+      // /edit/{id}. Иначе App Router после server action рефрешит RSC по
+      // новому сегменту, пересоздаёт инстанс редактора и теряет ввод.
+      // С query-параметром сегмент тот же → новые пропсы летят в EditorClient,
+      // но useEffect([]) не перезапускается, editor instance живёт.
+      if (postIdRef.current === null && out.postId) {
+        postIdRef.current = out.postId;
+        setPostId(out.postId);
+        window.history.replaceState({}, "", `/new?id=${out.postId}`);
+      }
+      setSaveState({ state: "saved", at: new Date(out.updatedAt) });
     } catch (e) {
-      console.error("[editor.save]", e);
+      setSaveState({ state: "error" });
+      console.error("[saveDraft]", e);
+    } finally {
+      inFlightRef.current = false;
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        flushSave();
+      }
     }
   };
 
   const onTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Обновляем ref сразу — иначе flushSave прочитает старое значение,
+    // потому что setTitle асинхронен и замыкание debounce-таймера успело бы
+    // захватить устаревший title.
+    titleRef.current = e.target.value;
     setTitle(e.target.value);
+    scheduleSave();
+  };
+
+  const onTagsChange = (next: string[]) => {
+    // Та же синхронная синхронизация, что и для title: ref → state → debounce.
+    tagIdsRef.current = next;
+    setSelectedTagIds(next);
     scheduleSave();
   };
 
@@ -144,7 +199,7 @@ export function EditorClient(props: Props) {
     router.refresh();
   };
 
-  const onArchive = async () => { if (postId) { await archivePost(postId); router.push({ pathname: "/drafts", query: { tab: "archived" } } as never); } };
+  const onArchive = async () => { if (postId) { await archivePost(postId); router.push("/drafts?tab=archived" as never); } };
   const onDelete = async  () => { if (postId) { await softDeletePost(postId); router.push("/drafts"); } };
 
   const primaryButton = (() => {
@@ -173,7 +228,7 @@ export function EditorClient(props: Props) {
       <TagPicker
         availableTags={props.availableTags}
         value={selectedTagIds}
-        onChange={setSelectedTagIds}
+        onChange={onTagsChange}
         readonly={props.status !== "draft"}
       />
 
