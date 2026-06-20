@@ -2335,20 +2335,79 @@ git commit -m "docs(plan-5a): README discovery section + retro skeleton"
 
 ### Что прошло гладко
 
-- *(заполнить)*
+- TDD-цикл на `readingTime`, `Paginator`, `LeftNav`, `PostCard`, `feed-queries`, `sitemap` —
+  ни одного RED-кейса, который пришлось бы переписывать после реализации. План был
+  достаточно конкретный, чтобы переход RED→GREEN занимал 1 итерацию.
+- `server/feed.ts` — 7 запросов в одном файле без CTE/array_agg действительно
+  читаемы, hydrate-helper с `inArray(postIds)` дал десятки строк трафика для V1
+  и оставил архитектуру плоской.
+- Route groups `(public)/(feed)/` + `(app)/(feed)/` под общим `<FeedShell>` сложились
+  как ожидалось: разный auth, один layout, никакой дублирующей разметки.
+- Overlay-link-паттерн в `PostCard` снял проблему nested `<a>` без введения
+  client-компонентов.
 
 ### Расхождения с планом / спекой
 
-1. *(заполнить — обычно 3-6 пунктов)*
+1. **`tests/setup.ts` пришлось расширить** — `vi.mock("next/image")` (иначе jsdom-рендер
+   `PostCard` падает на валидации `remotePatterns`) и `afterEach(cleanup)` для RTL.
+   В плане Task 1 это не предусматривалось — добавилось по факту, когда PostCard-тесты
+   начали падать с реальным `.env`.
+2. **`tests/storage/upload-route.test.ts:withEnv`** содержал pre-existing баг
+   (не удалял существующие `R2_*` перед оверрайдом). Всплыло только в Task 7,
+   когда чтобы прогнать feed-queries.test.ts с реальной БД, приходится `source .env`.
+   Починили там же — кейс «503 when R2 env not configured» теперь честный.
+3. **`@/theme/*` алиас был переименован в `@theme/*`** — изначальное `@`-prefix-mapping
+   в vitest конфликтовал с `@/theme` (последний шёл первым по prefix-match).
+   Поменяли на отдельный alias, заодно почистили tsconfig — это решение пользователь
+   выбрал явно, отказавшись от regex-обходного фикса.
+4. **`TagBadge`: убран `onClick={stopPropagation}`** — overlay-pattern в PostCard
+   уже изолирует тэги от карточной ссылки через `pointer-events`+`z-index`, а `onClick`
+   превращал компонент в client-only и ронял RSC-рендер из `PostList` Server Component'а.
+   План в Task 4 описывал stopPropagation, но при overlay он не нужен.
+5. **`next.config.ts:remotePatterns`** — пришлось добавить OAuth-аватарные хосты
+   (`avatars.yandex.net`, `*.userapi.com`, `*.vk.com`). До plan-5a `next/image` для
+   author-аватара нигде не использовался, поэтому проблема не всплывала.
+6. **`.env.example`: удалён `NODE_ENV=development`** — он же ломал `pnpm build`
+   (Next бандлит dev-вариант `_error.tsx` с `<Html>`, что нелегально в App Router).
+   Это техдолг plan-04 (предсказанный в Task 14.5), починили на месте.
+7. **`Tasks 8-11`: вместо удаления `src/app/page.tsx` и `src/app/u/[username]/page.tsx`
+   через `rm -rf` использовали `git rm`** — план описывает `rm`, но он не обновляет
+   индекс, и `pnpm build` после такого падал с PageNotFoundError. С `git rm` сразу чисто.
 
 ### Что подтвердилось из плана
 
-- *(заполнить)*
+- 3-col shell (`200px / 1fr / 280px`) одинаково подходит публичным discovery и
+  auth-only `/drafts` — никаких дублей.
+- Пагинация через `<Link href="?page=N">` (RSC-friendly) не вынудила нас вводить
+  client-state. Канонический URL без `?page=1` — реализован на стороне Paginator.
+- `inArray(postIds)` для подтяжки тэгов одним доп. запросом масштабируется до 20×N
+  без заметной latency.
+- `force-dynamic` на `sitemap.ts` — без него Next пытается prerender'ить во время
+  build и фолбэчит на pages-router `_error`.
 
 ### Отложено / маркеры на будущее
 
-- *(заполнить — повтор из §«Сознательно отложено» + новые открытия)*
+(Повтор из §«Сознательно отложено» наверху — всё ещё актуально.)
+
+Новые открытия:
+
+- **`next/image` для аватарок** — для 20×20 OAuth-аватаров оптимизация даёт минимум,
+  но мы её включили ради консистентности. В фазе 2, если CDN-стоимость на оптимизацию
+  пользовательских аватарок вырастет, рассмотреть `<img>` для аватаров ≤32px.
+- **Sitemap-split** — пока один файл, см. §«Сознательно отложено».
+- **`README.md` секция Discovery** — добавлена; в plan-06 (SEO) обновить под
+  IndexNow + canonical URL.
 
 ### Готовность к plan-5b (Engagement: Comments + Moderation)
 
-- *(заполнить — что готово для комментов: схема? таблица будет comments? UI-шелл готов? feed-query можно реюзать?)*
+- ✅ **`PostCard` / `PostList` / `Paginator`** — переиспользуемы для списка комментов,
+  если потребуется (но скорее всего комменты будут своим списком, без пагинации в V1).
+- ✅ **`FeedShell` + route group `(public)/(feed)/`** — `/p/[slug]` уже в нём; для
+  комментов под постом ничего не двигать.
+- ✅ **`server/feed.ts:hydrateCards`** — паттерн «один JOIN + один `inArray` доп»
+  готов к копированию для `comments + authors`.
+- ✅ **`extractPlainText`** в server-feed уже используется (для reading-time) — можно
+  переиспользовать для preview-комментов.
+- ⚠️ **Drizzle schema без таблицы `comments`** — добавлять в plan-5b миграцией 0003.
+- ⚠️ **Auth-guard для модерации** — `requireAuthState` пока без `role`-check; нужен
+  отдельный хелпер `requireMod` для plan-5b.

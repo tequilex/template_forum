@@ -58,12 +58,28 @@ pnpm dev
 
 - `/new` — создание поста (требует логин). Редактор Editor.js с автосейвом.
 - `/edit/[id]` — редактирование своего поста (404 на чужой / soft-deleted).
-- `/drafts` — список моих черновиков и архива (табы `?tab=drafts|archived`).
+- `/drafts` — список моих черновиков и архива (табы `?tab=drafts|archived`); живёт под discovery-shell'ом.
 - `/p/[slug]` — публичная страница поста. Видимость:
   - draft → 404
   - published → 200 (всем)
   - archived → 200 только автору, остальным 404
   - soft-deleted → 410 (разметка «удалён»; точный HTTP-status — plan-06)
+
+### Discovery (plan-5a)
+
+Публичные read-only страницы:
+
+- `/`             — главная лента (20 постов на страницу, `?page=N`)
+- `/t/[slug]`     — посты по тэгу
+- `/tags`         — индекс всех тэгов
+- `/u/[username]` — профиль автора (bio + stats + посты)
+
+Все обёрнуты в 3-col shell (`<FeedShell>`): левый nav + центральная лента + пустой
+правый sidebar. На mobile (`<lg`) — bottom-bar навигация, sidebar скрыт.
+
+`/drafts` (auth-only) переехал в тот же shell — `(app)/(feed)/drafts`.
+
+Sitemap: `app/sitemap.ts` собирает `/`, `/tags`, `/p/*`, `/t/*`, `/u/*` из БД.
 
 ### Seed-тэги (миграция 0002)
 
