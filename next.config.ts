@@ -1,15 +1,25 @@
 import type { NextConfig } from "next";
 
+type Pattern = NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]>[number];
+
+// Аватарки OAuth-провайдеров. Это не пользовательский контент —
+// домены фиксированы для всего жизненного цикла приложения.
+const oauthAvatarHosts: Pattern[] = [
+  { protocol: "https", hostname: "avatars.yandex.net" },
+  { protocol: "https", hostname: "sun*.userapi.com" },
+  { protocol: "https", hostname: "*.vk.com" },
+];
+
 const r2Public = process.env.R2_PUBLIC_BASE;
-let remotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
+const remotePatterns: Pattern[] = [...oauthAvatarHosts];
 
 if (r2Public) {
   try {
     const u = new URL(r2Public);
-    remotePatterns = [{
+    remotePatterns.push({
       protocol: u.protocol.replace(":", "") as "https" | "http",
       hostname: u.hostname,
-    }];
+    });
   } catch {
     // Игнорим невалидный R2_PUBLIC_BASE — getEnv() в рантайме поймает.
   }
