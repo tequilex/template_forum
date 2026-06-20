@@ -24,6 +24,12 @@ export function LeftNav({ profileHref, className = "" }: LeftNavProps) {
   const items: NavItem[] = [
     { href: "/", label: content.nav.home, icon: Home, isActive: (p) => p === "/" },
     {
+      href: "/tags",
+      label: content.nav.tags,
+      icon: Hash,
+      isActive: (p) => p === "/tags" || p.startsWith("/t/"),
+    },
+    {
       href: "/drafts",
       label: content.nav.drafts,
       icon: FileText,
@@ -37,28 +43,9 @@ export function LeftNav({ profileHref, className = "" }: LeftNavProps) {
     },
   ];
 
-  // TODO(plan-5a Task 10): /tags переключить с <a> на <Link> когда появится список тегов.
-  const tagsActive = pathname === "/tags" || pathname.startsWith("/t/");
-
   return (
     <nav className={`flex flex-col gap-1 text-sm ${className}`} aria-label="Главная навигация">
-      <Link
-        href="/"
-        aria-current={items[0].isActive(pathname) ? "page" : undefined}
-        className={navItemClass(items[0].isActive(pathname))}
-      >
-        <Home className="h-4 w-4" />
-        {content.nav.home}
-      </Link>
-      <a
-        href="/tags"
-        aria-current={tagsActive ? "page" : undefined}
-        className={navItemClass(tagsActive)}
-      >
-        <Hash className="h-4 w-4" />
-        {content.nav.tags}
-      </a>
-      {items.slice(1).map((item) => {
+      {items.map((item) => {
         const active = item.isActive(pathname);
         const Icon = item.icon;
         return (
