@@ -1,3 +1,5 @@
+import "@testing-library/jest-dom/vitest";
+
 const env = process.env as Record<string, string | undefined>;
 env.NODE_ENV ??= "test";
 env.DATABASE_URL ??= "postgres://app:test@localhost:5432/app";
