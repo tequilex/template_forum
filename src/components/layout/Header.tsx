@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";

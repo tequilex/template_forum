@@ -9,9 +9,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
-      "@/theme": resolve(__dirname, "theme"),
+      "@theme": resolve(__dirname, "theme"),
       "@db": resolve(__dirname, "drizzle"),
+      "@": resolve(__dirname, "src"),
     },
   },
   // Next/React 19 — JSX automatic runtime; в tsconfig стоит "preserve" (для Next).

@@ -1,4 +1,4 @@
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { requireAuthState } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";

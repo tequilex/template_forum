@@ -1,4 +1,4 @@
-import { seo } from "@/theme/seo";
+import { seo } from "@theme/seo";
 
 export const siteConfig = {
   name: seo.siteName,

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { fontDisplay, fontText } from "@/theme/fonts";
-import { seo } from "@/theme/seo";
+import { fontDisplay, fontText } from "@theme/fonts";
+import { seo } from "@theme/seo";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
-import "@/theme/tokens.css";
-import "@/theme/typography.css";
+import "@theme/tokens.css";
+import "@theme/typography.css";
 
 export const metadata: Metadata = {
   title: { default: seo.defaultTitle, template: `%s — ${seo.siteName}` },

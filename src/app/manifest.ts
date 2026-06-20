@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { content } from "@/theme/content";
-import { seo } from "@/theme/seo";
+import { content } from "@theme/content";
+import { seo } from "@theme/seo";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

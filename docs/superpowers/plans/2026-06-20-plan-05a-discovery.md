@@ -191,7 +191,7 @@ git commit -m "chore(plan-5a): add @testing-library/react + jsdom; vitest jsdom 
 
 ```ts
 // src/lib/site-config.ts
-import { seo } from "@/theme/seo";
+import { seo } from "@theme/seo";
 
 // Минимальный фасад для plan-5a — siteConfig.name + siteConfig.url.
 // Использовать ТОЛЬКО в коде, которому нужен абсолютный URL (sitemap, generateMetadata
@@ -326,7 +326,7 @@ export function RightSidebar({ className }: { className?: string }) {
 // src/components/layout/BottomNav.tsx
 import Link from "next/link";
 import { Home, Hash, FileText, User } from "lucide-react";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 
 interface BottomNavProps {
   profileHref: string;  // вычисляется в FeedShell на основе session
@@ -431,7 +431,7 @@ pnpm test tests/feed/left-nav.test.tsx
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Hash, FileText, User } from "lucide-react";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 
 interface LeftNavProps {
   profileHref: string;
@@ -790,7 +790,7 @@ pnpm test tests/feed/post-card.test.tsx
 // src/components/feed/PostCard.tsx
 import Link from "next/link";
 import Image from "next/image";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { TagBadge } from "@/components/tags/TagBadge";
 
 export interface PostCardData {
@@ -964,7 +964,7 @@ pnpm test tests/feed/paginator.test.tsx
 ```tsx
 // src/components/feed/Paginator.tsx
 import Link from "next/link";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 
 interface PaginatorProps {
   basePath: string;       // "/", "/t/design", "/u/alice"
@@ -1517,8 +1517,8 @@ git commit -m "feat(plan-5a): server/feed.ts — getFeedPage / getTagFeedPage / 
 // src/app/(public)/(feed)/page.tsx
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { content } from "@/theme/content";
-import { seo } from "@/theme/seo";
+import { content } from "@theme/content";
+import { seo } from "@theme/seo";
 import { PostList } from "@/components/feed/PostList";
 import { getFeedPage } from "@/server/feed";
 
@@ -1601,7 +1601,7 @@ git commit -m "feat(plan-5a): public main feed at (public)/(feed)/page.tsx (repl
 // src/app/(public)/(feed)/t/[slug]/page.tsx
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { siteConfig } from "@/lib/site-config";
 import { PostList } from "@/components/feed/PostList";
 import { getTagBySlug, getTagFeedPage } from "@/server/feed";
@@ -1685,7 +1685,7 @@ git commit -m "feat(plan-5a): /t/[slug] tag feed page with generateMetadata"
 ```tsx
 // src/components/tags/TagListRow.tsx
 import Link from "next/link";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 
 interface TagListRowProps {
   slug: string;
@@ -1719,7 +1719,7 @@ export function TagListRow({ slug, name, description, postCount }: TagListRowPro
 ```tsx
 // src/app/(public)/(feed)/tags/page.tsx
 import type { Metadata } from "next";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { siteConfig } from "@/lib/site-config";
 import { TagListRow } from "@/components/tags/TagListRow";
 import { getTagsIndex } from "@/server/feed";
@@ -1787,7 +1787,7 @@ git commit -m "feat(plan-5a): /tags index with TagListRow"
 
 ```tsx
 // src/components/profile/UserStatsRow.tsx
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { TagBadge } from "@/components/tags/TagBadge";
 
 interface UserStatsRowProps {
@@ -1870,7 +1870,7 @@ export function UserProfileHeader(props: UserProfileHeaderProps) {
 // src/app/(public)/(feed)/u/[username]/page.tsx
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { siteConfig } from "@/lib/site-config";
 import { PostList } from "@/components/feed/PostList";
 import { UserProfileHeader } from "@/components/profile/UserProfileHeader";

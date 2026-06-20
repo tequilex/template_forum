@@ -1,4 +1,4 @@
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 
 export function Footer() {
   return (

@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { buildEdgeConfig } from "@/lib/auth/config.edge";
 import { getEnv } from "@/lib/env";
 import { redirect } from "next/navigation";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { ProviderButtons } from "@/components/auth/ProviderButtons";
 
 export default async function LoginPage() {

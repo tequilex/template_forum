@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { content } from "@/theme/content";
+import { content } from "@theme/content";
 import { setUsername } from "./actions";
 import { Button } from "@/components/ui/button";
 
