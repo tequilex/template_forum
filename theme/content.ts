@@ -9,7 +9,15 @@ export const content = {
     home: "Лента",
     new: "Написать пост",
     tags: "Темы",
+    drafts: "Драфты",
+    profile: "Профиль",
     login: "Войти",
+  },
+  feed: {
+    prev: "← Назад",
+    next: "Вперёд →",
+    page: (n: number) => `Страница ${n}`,
+    readingTime: (min: number) => `${min} мин чтения`,
   },
   auth: {
     loginTitle: "Войти",
@@ -28,6 +36,16 @@ export const content = {
     feed: "Пока нет постов. Будьте первым!",
     drafts: "У вас нет черновиков",
     tag: "Постов по этой теме пока нет",
+    userFeed: "У автора пока нет публикаций.",
+  },
+  tags: {
+    indexTitle: "Все темы",
+    indexEmpty: "Темы ещё не созданы.",
+    postCount: (n: number) => `${n} постов`,
+  },
+  profile: {
+    registeredSince: (monthYear: string) => `с ${monthYear}`,
+    postsCount: (n: number) => `${n} постов`,
   },
   footer: {
     about: "О проекте",
