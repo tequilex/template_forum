@@ -31,6 +31,9 @@ const baseR2Env = {
 
 const withEnv = <T>(extra: Record<string, string>, fn: () => Promise<T>): Promise<T> => {
   const snapshot = { ...process.env };
+  // Гарантируем чистый env: удаляем всё лишнее, затем выставляем минимум.
+  // Без этого R2_*, попавшие через .env, утекают в кейс «503 when R2 env not configured».
+  for (const k of Object.keys(process.env)) delete process.env[k];
   Object.assign(process.env, {
     DATABASE_URL: "postgres://app:pw@localhost:5432/app",
     NEXTAUTH_URL: "http://localhost:3000",
