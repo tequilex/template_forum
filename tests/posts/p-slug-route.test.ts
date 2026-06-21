@@ -47,7 +47,7 @@ beforeEach(() => {
 // логику видимости без подъёма HTTP-сервера. JSX не ассертим — только
 // факт notFound() (throws) vs обычный return.
 const callPage = (slug: string) =>
-  PostPage({ params: Promise.resolve({ slug }) } as any);
+  PostPage({ params: Promise.resolve({ slug }), searchParams: Promise.resolve({}) } as any);
 
 describe("/p/[slug] visibility matrix", () => {
   it("published, anon → render (no throw)", async () => {
@@ -82,8 +82,8 @@ describe("/p/[slug] visibility matrix", () => {
     await expect(callPage("route-arc")).rejects.toThrow();
   });
 
-  it("deleted, anyone → returns deleted markup (no throw)", async () => {
-    await expect(callPage("route-del")).resolves.toBeTruthy();
+  it("deleted, anyone → notFound (unified 404 in plan-5b)", async () => {
+    await expect(callPage("route-del")).rejects.toThrow();
   });
 
   it("bad slug → notFound", async () => {

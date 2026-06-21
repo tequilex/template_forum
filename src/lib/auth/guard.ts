@@ -10,7 +10,7 @@ import { posts } from "@db/schema";
 export async function requireAuthState() {
   const session = await auth();
   if (!session?.user) return null;
-  if (session.user.bannedAt) redirect("/api/auth/ban-kill");
+  if (session.user.bannedAt) redirect("/banned");
   if (!session.user.username) redirect("/welcome");
   return session;
 }

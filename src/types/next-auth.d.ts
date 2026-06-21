@@ -5,6 +5,7 @@ declare module "next-auth" {
     username?: string | null;
     role?: "user" | "moderator" | "admin";
     bannedAt?: Date | null;
+    banReason?: string | null;
     bio?: string | null;
   }
 
@@ -14,6 +15,7 @@ declare module "next-auth" {
       username: string | null;
       role: "user" | "moderator" | "admin";
       bannedAt: Date | null;
+      banReason: string | null;
     } & DefaultSession["user"];
   }
 }

@@ -21,6 +21,7 @@ export function buildEdgeConfig(): NextAuthConfig {
         session.user.username = user.username ?? null;
         session.user.role = user.role ?? "user";
         session.user.bannedAt = user.bannedAt ?? null;
+        session.user.banReason = user.banReason ?? null;
         return session;
       },
     },
