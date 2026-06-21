@@ -1,12 +1,19 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, like, or } from "drizzle-orm";
 import { getDb, getPool } from "@/lib/db";
 import { comments, users, posts } from "@db/schema";
 import { newId } from "@/lib/auth/id";
 
 const db = getDb();
 
+// Cleanup по паттерну, а не по конкретному id — чтобы упавший в середине
+// assert не оставлял осиротевшие строки в dev-БД (видны как «анонимный пост»
+// в /p/[slug]). Pattern self-healing: подберёт и старые утечки.
 afterAll(async () => {
+  await db.delete(posts).where(like(posts.slug, "t-%"));
+  await db.delete(users).where(
+    or(like(users.email, "t-%@x.io"), like(users.email, "a-%@x.io"), like(users.email, "b-%@x.io")),
+  );
   await getPool().end();
 });
 
@@ -30,10 +37,6 @@ describe("schema 0003 — comments + ban_reason + hidden_by_admin", () => {
     expect(rows[0].contentText).toBe("привет");
     expect(rows[0].parentId).toBeNull();
     expect(rows[0].deletedAt).toBeNull();
-
-    await db.delete(comments).where(eq(comments.id, commentId));
-    await db.delete(posts).where(eq(posts.id, postId));
-    await db.delete(users).where(eq(users.id, userId));
   });
 
   it("posts.hiddenByAdminAt и users.banReason доступны на запись", async () => {
@@ -53,9 +56,5 @@ describe("schema 0003 — comments + ban_reason + hidden_by_admin", () => {
 
     const banned = (await db.select().from(users).where(eq(users.id, authorId)))[0];
     expect(banned.banReason).toBe("spam");
-
-    await db.delete(posts).where(eq(posts.id, postId));
-    await db.delete(users).where(eq(users.id, adminId));
-    await db.delete(users).where(eq(users.id, authorId));
   });
 });
