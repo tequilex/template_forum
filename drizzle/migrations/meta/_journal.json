@@ -22,6 +22,13 @@
       "when": 1781542719138,
       "tag": "0002_rare_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782065997815,
+      "tag": "0003_powerful_lilandra",
+      "breakpoints": true
     }
   ]
 }
