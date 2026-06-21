@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, isNotNull, or } from "drizzle-orm";
 import { requireAuthState } from "@/lib/auth/guard";
 import { getDb } from "@/lib/db";
 import { posts } from "@db/schema";
@@ -15,7 +15,11 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
 
   const { tab } = await searchParams;
   const activeTab = tab === "archived" ? "archived" : "drafts";
-  const targetStatus = activeTab === "archived" ? "archived" : "draft";
+  // Скрытые админом published-посты автор видит в табе «Черновики» с плашкой —
+  // иначе им негде проявиться в UI (публично 404, в архив их не передвинули).
+  const statusCondition = activeTab === "archived"
+    ? eq(posts.status, "archived")
+    : or(eq(posts.status, "draft"), isNotNull(posts.hiddenByAdminAt));
 
   const items = await getDb()
     .select({
@@ -25,12 +29,13 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
       status: posts.status,
       updatedAt: posts.updatedAt,
       coverUrl: posts.coverUrl,
+      hiddenByAdminAt: posts.hiddenByAdminAt,
     })
     .from(posts)
     .where(and(
       eq(posts.authorId, session.user.id),
       isNull(posts.deletedAt),
-      eq(posts.status, targetStatus),
+      statusCondition,
     ))
     .orderBy(desc(posts.updatedAt));
 

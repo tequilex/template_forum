@@ -1,12 +1,14 @@
 import Link from "next/link";
+import { content } from "@theme/content";
 
 type Item = {
   id: string;
   title: string;
   slug: string;
-  status: "draft" | "archived";
+  status: "draft" | "archived" | "published";
   updatedAt: Date;
   coverUrl: string | null;
+  hiddenByAdminAt: Date | null;
 };
 
 type Props = {
@@ -34,7 +36,14 @@ export function DraftsList({ items, activeTab }: Props) {
                 href={`/edit/${item.id}`}
                 className="block rounded-md border border-border p-4 hover:bg-accent transition"
               >
-                <p className="font-medium">{item.title || "(без названия)"}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium">{item.title || "(без названия)"}</p>
+                  {item.hiddenByAdminAt && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-destructive/10 text-destructive">
+                      {content.moderation.hiddenByAdmin}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   обновлено {item.updatedAt.toLocaleString("ru-RU")}
                 </p>
