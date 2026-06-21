@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { UserStatsRow } from "./UserStatsRow";
+import { WriteButton } from "@/components/post/WriteButton";
 
 interface UserProfileHeaderProps {
   username: string;
@@ -9,10 +10,11 @@ interface UserProfileHeaderProps {
   postsCount: number;
   registeredAt: Date;
   topTags: { slug: string; name: string }[];
+  isOwner: boolean;
 }
 
 export function UserProfileHeader(props: UserProfileHeaderProps) {
-  const { username, name, image, bio, postsCount, registeredAt, topTags } = props;
+  const { username, name, image, bio, postsCount, registeredAt, topTags, isOwner } = props;
   const displayName = name ?? username;
 
   return (
@@ -33,6 +35,11 @@ export function UserProfileHeader(props: UserProfileHeaderProps) {
         <p className="text-sm text-muted-foreground">@{username}</p>
         {bio && <p className="text-sm mt-2 leading-relaxed">{bio}</p>}
         <UserStatsRow postsCount={postsCount} registeredAt={registeredAt} topTags={topTags} />
+        {isOwner && (
+          <div className="mt-4">
+            <WriteButton variant="cta" isAuthed />
+          </div>
+        )}
       </div>
     </header>
   );

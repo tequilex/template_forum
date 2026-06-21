@@ -5,9 +5,11 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Home, Hash, FileText, User } from "lucide-react";
 import { content } from "@theme/content";
+import { WriteButton } from "@/components/post/WriteButton";
 
 interface LeftNavProps {
   profileHref: Route;
+  isAuthed: boolean;
   className?: string;
 }
 
@@ -18,7 +20,7 @@ interface NavItem {
   isActive: (pathname: string) => boolean;
 }
 
-export function LeftNav({ profileHref, className = "" }: LeftNavProps) {
+export function LeftNav({ profileHref, isAuthed, className = "" }: LeftNavProps) {
   const pathname = usePathname() ?? "/";
 
   const items: NavItem[] = [
@@ -45,6 +47,12 @@ export function LeftNav({ profileHref, className = "" }: LeftNavProps) {
 
   return (
     <nav className={`flex flex-col gap-1 text-sm ${className}`} aria-label="Главная навигация">
+      {isAuthed && (
+        <>
+          <WriteButton variant="nav" isAuthed className="mb-2" />
+          <div className="h-px bg-border my-1" />
+        </>
+      )}
       {items.map((item) => {
         const active = item.isActive(pathname);
         const Icon = item.icon;

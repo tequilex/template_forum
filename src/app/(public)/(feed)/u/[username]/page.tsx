@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { content } from "@theme/content";
 import { siteConfig } from "@/lib/site-config";
+import { auth } from "@/lib/auth";
 import { PostList } from "@/components/feed/PostList";
 import { UserProfileHeader } from "@/components/profile/UserProfileHeader";
 import {
@@ -33,14 +34,17 @@ export default async function UserProfilePage({ params, searchParams }: PageProp
   const user = await getUserByUsername(username);
   if (!user || !user.username || user.bannedAt) notFound();
 
-  const [{ postsCount, topTags }, { items, currentPage, totalPages }] = await Promise.all([
+  const [{ postsCount, topTags }, { items, currentPage, totalPages }, session] = await Promise.all([
     getUserProfile(user.id),
     getUserFeedPage(user.id, page),
+    auth(),
   ]);
 
   if (page > totalPages && items.length === 0 && totalPages > 0) {
     notFound();
   }
+
+  const isOwner = session?.user?.id === user.id;
 
   return (
     <>
@@ -52,6 +56,7 @@ export default async function UserProfilePage({ params, searchParams }: PageProp
         postsCount={postsCount}
         registeredAt={user.createdAt}
         topTags={topTags}
+        isOwner={isOwner}
       />
       <PostList
         items={items}
