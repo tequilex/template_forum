@@ -1,3 +1,5 @@
+import { ruPlural } from "@/lib/plural";
+
 export const content = {
   site: {
     name: "Skelet",
@@ -57,6 +59,52 @@ export const content = {
     text: "Сайт использует cookies для аналитики.",
     accept: "Принять",
     decline: "Только необходимые",
+  },
+  comments: {
+    heading: "Обсуждение",
+    countLabel: (n: number) => `${n} ${ruPlural(n, "комментарий", "комментария", "комментариев")}`,
+    empty: "Будьте первым, кто оставит комментарий.",
+    placeholder: "Ваш комментарий...",
+    submit: "Отправить",
+    edit: "Изменить",
+    save: "Сохранить",
+    cancel: "Отмена",
+    delete: "Удалить",
+    deleteConfirm: "Удалить комментарий?",
+    deletedByAuthor: "Комментарий удалён автором",
+    deletedByAdmin: "Комментарий удалён администратором",
+    bannedAuthor: "автор заблокирован",
+    loginToComment: "Войдите, чтобы оставить комментарий",
+    editWindowClosed: "Окно редактирования (15 минут) закрыто.",
+    rateLimitHit: (sec: number) => `Слишком часто. Попробуйте через ${sec} с.`,
+    charCount: (n: number) => `${n} / 2000`,
+    reply: "Ответить",
+  },
+  moderation: {
+    postMenuLabel: "Действия модератора",
+    hidePost: "Скрыть пост",
+    unhidePost: "Показать пост",
+    deletePost: "Удалить пост",
+    deletePostConfirm: "Удалить пост? Восстановить сможете в админ-меню.",
+    restorePost: "Восстановить",
+    banUser: "Заблокировать автора",
+    banReasonLabel: "Причина блокировки (обязательно)",
+    banReasonPlaceholder: "Минимум 5 символов",
+    banSubmit: "Заблокировать",
+    unbanUser: "Разблокировать",
+    hiddenByAdmin: "Скрыт администратором",
+    adminDeleteComment: "Удалить",
+    adminRestoreComment: "Восстановить",
+  },
+  banned: {
+    heading: "Ваша учётная запись заблокирована",
+    reasonLabel: "Причина:",
+    noReason: "Причина не указана.",
+    logout: "Выйти",
+  },
+  write: {
+    label: "Написать",
+    cta: "Написать пост",
   },
   copyright: `© ${new Date().getFullYear()} Skelet`,
 } as const;
