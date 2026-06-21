@@ -42,7 +42,7 @@ describe("comment actions", () => {
   });
 
   it("createComment без session → reject", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as never);
     const r = await createComment(ids.post, "test");
     expect(r.ok).toBe(false);
   });
