@@ -9,7 +9,7 @@ const ids = { user: newId(), post: newId(), c1: newId(), c2: newId(), c3: newId(
 
 beforeAll(async () => {
   const db = getDb();
-  await db.insert(users).values({ id: ids.user, email: `q-${ids.user}@x.io`, username: `qa${ids.user.slice(0, 6)}` });
+  await db.insert(users).values({ id: ids.user, email: `q-${ids.user}@x.io`, username: `qa${ids.user.slice(-8)}` });
   await db.insert(posts).values({
     id: ids.post, authorId: ids.user, slug: `q-${ids.post}`, title: "q",
     content: { blocks: [] }, status: "published", pubAt: new Date(),

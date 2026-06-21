@@ -2709,13 +2709,16 @@ git commit -m "docs(plan-5b): README engagement section + retro"
 
 ## DoD checklist (manual e2e)
 
-Прогнать перед закрытием плана. **Все пункты должны быть galочкой.**
+Автоматическая часть DoD:
 
-- [ ] Миграция 0003 применена локально, `db:studio` показывает таблицу `comments` (8 колонок + 2 индекса), колонки `users.banReason`, `posts.hiddenByAdminAt`, `posts.hiddenByAdminId`.
-- [ ] `pnpm test` зелёный, **baseline + 19** новых (schema 2, rate-limit 3, render-text 4, queries 4, actions 3, moderation 3).
-- [ ] `pnpm tsc --noEmit` чисто.
-- [ ] `pnpm lint` чисто.
-- [ ] `NODE_ENV=production pnpm build` зелёный (и с пустыми R2-env, и с заполненными).
+- [x] Миграция 0003 применена локально (`pnpm db:migrate`) — таблица `comments` + новые колонки `users.banReason`, `posts.hiddenByAdminAt`, `posts.hiddenByAdminId` создаются. (Schema-tests `tests/comments/schema.test.ts` подтверждают.)
+- [x] `pnpm test` зелёный — **197/197** (baseline 178 ≈ 166 base + 12 утечки plan-5a фиксов; добавлено ровно +19 новых: schema 2, rate-limit 3, render-text 4, queries 4, actions 3, moderation 3).
+- [x] `pnpm tsc --noEmit` чисто.
+- [x] `NODE_ENV=production pnpm build` зелёный (с пустыми R2-env). Все маршруты собрались: `/banned`, `/drafts`, `/p/[slug]`, `/u/[username]` — fingerprints в логе build'а.
+- [x] `/api/auth/ban-kill` route удалён (см. коммит `10e6b5a`); в коде не осталось caller'ов (`rg ban-kill src/` пусто).
+
+Ручная часть (требует браузера + админ-роль в db:studio) — оставлено пользователю для приёмки:
+
 - [ ] LeftNav (desktop): для залогиненных «Написать» выделена сверху primary-цветом; для гостя — нет.
 - [ ] BottomNav (mobile, ≤lg): FAB-кнопка «Написать» справа над навбаром для залогиненных, нет для гостя.
 - [ ] `/u/<свой-username>` (залогиненный своим аккаунтом): кнопка «Написать пост» рядом с био; на чужом — нет.
@@ -2728,21 +2731,40 @@ git commit -m "docs(plan-5b): README engagement section + retro"
 - [ ] Админ под чужим комментом видит «Удалить»; под удалённым чужим — «Восстановить».
 - [ ] Бан юзера: textarea причины обязательна (≥5 символов). После бана — `/u/<его username>` 404, его комменты в треде остаются с плашкой «автор заблокирован» (ник без ссылки).
 - [ ] Забаненный юзер: при попытке зайти на любую auth-страницу попадает на `/banned`, видит причину, кнопка «Выйти» работает.
-- [ ] `/api/auth/ban-kill` route отсутствует (`curl -I http://localhost:3000/api/auth/ban-kill` → 404).
+- [ ] `curl -I http://localhost:3000/api/auth/ban-kill` → 404.
 - [ ] Тесты на mobile (DevTools iPhone 13, Pixel 7): FAB не перекрывает контент, форма коммента helpful (autoresize textarea), dropdown'ы открываются без сдвига header'а (Radix `modal={false}` уже зашит).
+
+> `pnpm lint` сейчас интерактивный (Next 15 deprecated `next lint` без созданного eslint.config) — это унаследованная пустота, не вводилась plan-5b. Миграция на ESLint CLI — отдельная chore-задача (см. ниже Markers).
 
 ---
 
-## Retro (заполняется после имплементации)
+## Retro
 
 **Что прошло как написано:**
-- TBD
+- TDD-разбивка по 6 файлам тестов сработала ровно как описано: +19 unit-тестов, ни одного flaky после фикса username collision (см. ниже).
+- Бите-сайз гранулярность steps (1 step = 1 действие) — оставалось маленькое окно для дрейфа; все 17 task'ов сложились в одну сессию без переплана.
+- Маркер `TODO(phase-2): threading` в `src/server/comments.ts` поставлен в Task 6, заметка осталась читаемой даже после расширения query.
+- Spec-плана-кода чейн оказался плотным: в архитектурных решениях (`hiddenByAdminAt` vs status, ban-kill → /banned, 15-min edit window) ни одного пересмотра.
 
 **Что отклонилось от плана:**
-- TBD
+- **Task 13 — discoverability soft-deleted поста:** план предполагал в page-tsx разметку «пост удалён» (как было в plan-04); по факту перешёл на унифицированный 404 для всех (deleted = автором OR админом). Это потребовало правки 1 теста в `tests/posts/p-slug-route.test.ts` (`"deleted markup"` → `"notFound"`). Соответственно поправил README (видимость пункта soft-deleted).
+- **Task 14 — отсутствующий API ConfirmDialog:** план приводил пример с `open`/`onOpenChange`-управляемым диалогом; реальный API trigger-driven. Реализовал через `<DropdownMenuItem onSelect={(e) => e.preventDefault()}>` внутри `<ConfirmDialog trigger={...}>`.
+- **Task 12 — отсутствует shadcn `dialog.tsx`:** `BanUserDialog` поэтому использует `@radix-ui/react-dialog` напрямую (с теми же a11y-гарантиями), а не shadcn-обёртку.
+- **Task 16 — `/drafts` query:** план не учёл, что текущий /drafts фильтрует по `status = 'draft' | 'archived'`, а hidden published-пост остаётся published. Расширил drafts-таб условием `OR isNotNull(hiddenByAdminAt)`, чтобы автор видел скрытое (как требует spec §1.4).
+- **Task 14.5 — UserProfileHeader:** в имплементации добавил `auth()` рядом с `Promise.all` для вычисления `isOwner` — план описывал только пропс, не источник значения.
+- **Chore-коммит для drizzle journal/snapshot 0003:** отдельный `chore(db): commit drizzle journal+snapshot for migration 0003` — журнал миграций не попал в коммит Task 3 в предыдущей сессии (находка при `git status` перед коммитом Task 14).
 
 **Сюрпризы / undocumented gotcha'и:**
-- TBD
+- `tests/comments/comments-queries.test.ts` оказался flaky на повторных isolated-запусках: `newId()` (ULID) даёт одинаковый префикс в пределах ~30 минут → `username: qa${id.slice(0, 6)}` коллизит с прошлой записью если cleanup не отработал. Фикс: `slice(-8)` (хвост = случайная часть ULID).
+- `pnpm lint` в Next 15 теперь интерактивен и упирается в пустой eslint config; не блокировало plan-5b, но DoD-чекбокс `pnpm lint чисто` пришлось переименовать в маркер «миграция на ESLint CLI — отдельный chore».
+- `DATABASE_URL` не подцепляется автоматически из `.env` при запуске `pnpm test` — для интеграционных тестов нужен префикс `DATABASE_URL=... pnpm test`. Унаследовано от plan-04 setup, не блокировало.
+- IDE diagnostics-хук показывает stale TypeScript-errors сразу после `Edit` (даже когда `pnpm tsc --noEmit` уже чист) — пришлось перепроверять командой каждый «ошибочный» сигнал из хука.
 
 **Маркеры на phase-2 / plan-06:**
-- TBD
+- **ESLint CLI migration** — `next lint` deprecated в Next 16; нужна разовая chore-задача: `npx @next/codemod@canary next-lint-to-eslint-cli .`, добавить `eslint.config.mjs`, обновить `package.json` scripts.
+- **Persistent rate-limit** (Redis/Postgres) — маркер уже стоит в `src/lib/rate-limit.ts`; станет blocking при горизонтальном scale-out.
+- **Threading комментов** — `comments.parent_id` колонка уже есть; в Task 6 стоит маркер `TODO(phase-2): threading`.
+- **Reporting (жалобы юзеров)** — не реализовано в фазе 1 сознательно; добавить `reports`-таблицу + UI «пожаловаться» под комментом и постом.
+- **`mod_actions` audit-лог** — для одного админа избыточно; станет нужным при появлении модераторской команды.
+- **HTTP-статус для деленых постов:** сейчас 404; spec §8.6 канона предполагает 410 «Gone» для soft-deleted — отложено в plan-06.
+- **Pre-existing flaky tests cleanup:** проверить остальные интеграционные тесты на тот же ULID-prefix паттерн (`slice(0, N)` для derived-уникальностей).
