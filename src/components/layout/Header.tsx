@@ -8,7 +8,6 @@ import { auth } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/UserMenu";
 
 export async function Header() {
-  // TODO(plan-4): /tags переключить на <Link> когда появится список тегов
   const session = await auth();
   const user = session?.user;
 
@@ -19,14 +18,8 @@ export async function Header() {
           {content.site.name}
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            {content.nav.home}
-          </Link>
-          <a href="/tags" className="text-sm text-muted-foreground hover:text-foreground">
-            {content.nav.tags}
-          </a>
-        </nav>
+        {/* Навигация Лента/Темы живёт в LeftNav (desktop) и BottomNav (mobile),
+         * чтобы не дублировать. В хедере остаётся только лого + theme + profile. */}
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -50,13 +43,9 @@ export async function Header() {
             </SheetTrigger>
             <SheetContent side="right">
               <SheetTitle className="sr-only">Меню</SheetTitle>
+              {/* Лента/Темы на mobile — это BottomNav. Sheet оставлен только под
+               * профиль/логин, чтобы кнопка-гамбургер вела куда-то осмысленное. */}
               <nav className="flex flex-col gap-4 mt-8">
-                <SheetClose asChild>
-                  <Link href="/" className="text-base text-foreground">{content.nav.home}</Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <a href="/tags" className="text-base text-foreground">{content.nav.tags}</a>
-                </SheetClose>
                 <SheetClose asChild>
                   {user?.username
                     ? <Link href={`/u/${user.username}`} className="text-base text-foreground">@{user.username}</Link>

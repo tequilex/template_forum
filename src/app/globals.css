@@ -4,5 +4,19 @@
 
 @layer base {
   * { box-sizing: border-box; }
+  /* overflow-y: scroll форсит реальный скроллбар всегда (а не пустой gutter):
+   * на короткой странице thumb просто инактивен, на длинной — активен. Так и
+   * центральная колонка не скачет при переходах, и нет «пустой полосы» справа
+   * от хедера на странице без оверфлоу (что давало scrollbar-gutter: stable). */
+  html { overflow-y: scroll; }
   html, body { margin: 0; padding: 0; }
+
+  /* Radix Dialog (через react-remove-scroll@2.x) при открытии вешает на body
+   * атрибут data-scroll-locked и injects стиль:
+   *   body[data-scroll-locked] { margin-right: 15px !important; overflow: hidden !important; }
+   * чтобы компенсировать исчезающий скроллбар. У нас скроллбар постоянный
+   * (overflow-y: scroll выше) — компенсация лишняя, она и даёт сдвиг хедера.
+   * Глушим margin-right с большей специфичностью (html body... vs body...);
+   * overflow:hidden оставляем — это полезный scroll-lock для модалки. */
+  html body[data-scroll-locked] { margin-right: 0 !important; }
 }

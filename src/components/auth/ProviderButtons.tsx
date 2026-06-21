@@ -1,8 +1,10 @@
 "use client";
+import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import type { IconType } from "react-icons";
 import { SiMaildotru, SiOdnoklassniki, SiVk } from "react-icons/si";
 import { FaYandex } from "react-icons/fa6";
+import { useAsyncLock } from "@/hooks/use-async-lock";
 
 type CustomButton = { kind: "custom"; label: string; href: string; Icon: IconType; bg: string; fg: string };
 type NextAuthButton = { kind: "nextauth"; label: string; providerId: string; Icon: IconType; bg: string; fg: string };
@@ -33,32 +35,49 @@ export function ProviderButtons({
   ];
   if (buttons.length === 0) return null;
 
+  // Группа провайдеров с общим lock'ом: первый клик блокирует все, кликнутая
+  // показывает spinner. NextAuth signIn = XHR+redirect, VK = navigation — оба
+  // не моментальные, без feedback'а юзер успевает кликнуть второй раз.
+  const lock = useAsyncLock<string>();
+
   return (
     <div className="flex flex-col gap-3">
       {buttons.map((b, i) => {
+        const id = b.kind === "nextauth" ? `na-${b.providerId}` : `vk-${i}`;
+        const isPending = lock.isPending(id);
+        const Icon = isPending ? Loader2 : b.Icon;
+        const iconCls = `h-6 w-6 shrink-0${isPending ? " animate-spin" : ""}`;
+        const dim = lock.isLocked && !isPending ? " opacity-50" : "";
+
         if (b.kind === "custom") {
           return (
             <a
-              key={`vk-${i}`}
+              key={id}
               href={b.href}
+              onClick={(e) => {
+                if (lock.isLocked) { e.preventDefault(); return; }
+                lock.lock(id);
+              }}
+              aria-disabled={lock.isLocked || undefined}
               style={{ backgroundColor: b.bg, color: b.fg }}
-              className={ROW_CLASS}
+              className={`${ROW_CLASS}${dim}${lock.isLocked ? " cursor-not-allowed" : ""}`}
             >
               <span>{b.label}</span>
-              <b.Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
+              <Icon className={iconCls} aria-hidden="true" />
             </a>
           );
         }
         return (
           <button
-            key={`na-${b.providerId}-${i}`}
+            key={id}
             type="button"
-            onClick={() => signIn(b.providerId, { callbackUrl: "/" })}
+            disabled={lock.isLocked}
+            onClick={() => { lock.lock(id); signIn(b.providerId, { callbackUrl: "/" }); }}
             style={{ backgroundColor: b.bg, color: b.fg }}
-            className={ROW_CLASS}
+            className={`${ROW_CLASS}${dim} disabled:cursor-not-allowed`}
           >
             <span>{b.label}</span>
-            <b.Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
+            <Icon className={iconCls} aria-hidden="true" />
           </button>
         );
       })}

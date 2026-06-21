@@ -60,10 +60,11 @@ export function ConfirmDialog({
             <Button
               type="button"
               variant={destructive ? "destructive" : "default"}
-              disabled={!canConfirm || busy}
+              disabled={!canConfirm}
+              pending={busy}
               onClick={handle}
             >
-              {busy ? "..." : confirmLabel}
+              {confirmLabel}
             </Button>
           </div>
         </Dialog.Content>

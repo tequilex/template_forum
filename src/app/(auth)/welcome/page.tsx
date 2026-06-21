@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { content } from "@theme/content";
 import { setUsername } from "./actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "./SubmitButton";
 
 export default async function WelcomePage({
   searchParams,
@@ -37,7 +37,7 @@ export default async function WelcomePage({
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         {errorMsg && <p className="text-sm text-destructive">{errorMsg}</p>}
-        <Button type="submit">{content.auth.welcomeSubmit}</Button>
+        <SubmitButton>{content.auth.welcomeSubmit}</SubmitButton>
       </form>
     </main>
   );

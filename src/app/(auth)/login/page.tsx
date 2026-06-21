@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { buildEdgeConfig } from "@/lib/auth/config.edge";
 import { getEnv } from "@/lib/env";
@@ -22,14 +24,27 @@ export default async function LoginPage() {
   const vkEnabled = Boolean(env.VK_CLIENT_ID && env.VK_CLIENT_SECRET);
   const hasAny = nextAuthProviders.length > 0 || vkEnabled;
 
+  // /login без FeedShell — это самостоятельная страница входа. Центрируем
+  // карточку по обеим осям через flex на <main>. Над карточкой — back-link
+  // на главную (анону больше некуда вернуться), не Button чтобы пасть в типизацию
+  // <Link href>.
   return (
-    <main className="container mx-auto flex max-w-md items-center justify-center px-4 py-12">
-      <div className="w-full rounded-2xl border border-border bg-card p-8 shadow-sm">
-        <h1 className="font-display text-2xl text-center mb-2">{content.auth.loginTitle}</h1>
-        <p className="text-muted-foreground text-center mb-8">{content.auth.loginSubtitle}</p>
-        {hasAny
-          ? <ProviderButtons nextAuthProviders={nextAuthProviders} vkEnabled={vkEnabled} />
-          : <p className="text-sm text-muted-foreground text-center">{content.auth.noProviders}</p>}
+    <main className="container mx-auto flex min-h-[calc(100vh-14rem)] max-w-md flex-col items-center justify-center px-4 py-12">
+      <div className="w-full">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {content.auth.backToHome}
+        </Link>
+        <div className="w-full rounded-2xl border border-border bg-card p-8 shadow-sm">
+          <h1 className="font-display text-2xl text-center mb-2">{content.auth.loginTitle}</h1>
+          <p className="text-muted-foreground text-center mb-8">{content.auth.loginSubtitle}</p>
+          {hasAny
+            ? <ProviderButtons nextAuthProviders={nextAuthProviders} vkEnabled={vkEnabled} />
+            : <p className="text-sm text-muted-foreground text-center">{content.auth.noProviders}</p>}
+        </div>
       </div>
     </main>
   );

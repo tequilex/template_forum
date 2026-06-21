@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TagPicker } from "@/components/ui/TagPicker";
@@ -202,15 +202,18 @@ export function EditorClient(props: Props) {
   const onArchive = async () => { if (postId) { await archivePost(postId); router.push("/drafts?tab=archived" as never); } };
   const onDelete = async  () => { if (postId) { await softDeletePost(postId); router.push("/drafts"); } };
 
+  // useTransition: pending до завершения server-action + router.push/refresh.
+  // Один transition на все 3 primary-кнопки — они взаимоисключающие по статусу.
+  const [isPrimaryPending, startPrimary] = useTransition();
   const primaryButton = (() => {
     if (props.status === "draft") {
-      return <Button onClick={onPublish}>Опубликовать</Button>;
+      return <Button pending={isPrimaryPending} onClick={() => startPrimary(() => onPublish())}>Опубликовать</Button>;
     }
     if (props.status === "published") {
-      return <Button onClick={onRepublish}>Сохранить изменения</Button>;
+      return <Button pending={isPrimaryPending} onClick={() => startPrimary(() => onRepublish())}>Сохранить изменения</Button>;
     }
     if (props.status === "archived") {
-      return <Button onClick={onUnarchive} variant="outline">Разархивировать</Button>;
+      return <Button pending={isPrimaryPending} onClick={() => startPrimary(() => onUnarchive())} variant="outline">Разархивировать</Button>;
     }
     return null;
   })();

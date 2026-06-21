@@ -12,7 +12,9 @@ import {
 export function ThemeToggle() {
   const { setTheme } = useTheme();
   return (
-    <DropdownMenu>
+    // modal=false: см. UserMenu — иначе Radix компенсирует скроллбар через
+    // padding-right на body, и хедер дёргается при открытии.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Сменить тему" className="relative">
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

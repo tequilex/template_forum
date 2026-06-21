@@ -31,6 +31,7 @@ export const content = {
     errorFormat: "Неправильный формат username",
     errorReserved: "Этот username зарезервирован",
     errorTaken: "Этот username уже занят",
+    backToHome: "На главную",
   },
   empty: {
     feed: "Пока нет постов. Будьте первым!",
