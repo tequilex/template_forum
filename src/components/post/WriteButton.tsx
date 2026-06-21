@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function WriteButton({ variant, isAuthed, className = "" }: Props) {
-  const href = (isAuthed ? "/drafts/new" : "/login?from=/drafts/new") as Route;
+  const href = (isAuthed ? "/new" : "/login?from=/new") as Route;
 
   if (variant === "nav") {
     return (
