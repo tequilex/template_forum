@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   bio: text("bio"),
   role: userRole("role").notNull().default("user"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  banReason: text("ban_reason"),
   bannedAt: timestamp("banned_at"),
 }, (t) => ({
   usernameIdx: index("users_username_idx").on(t.username),
@@ -70,6 +71,8 @@ export const posts = pgTable("posts", {
   pubAt: timestamp("pub_at"),                           // null до publishPost
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  hiddenByAdminAt: timestamp("hidden_by_admin_at"),
+  hiddenByAdminId: text("hidden_by_admin_id").references(() => users.id),
   deletedAt: timestamp("deleted_at"),
 }, (t) => ({
   feedIdx: index("posts_feed_idx").on(t.status, t.pubAt),
@@ -91,6 +94,25 @@ export const postTags = pgTable("post_tags", {
 }, (t) => ({
   pk: primaryKey({ columns: [t.postId, t.tagId] }),
   tagIdx: index("post_tags_tag_idx").on(t.tagId, t.postId),
+}));
+
+// comments — плоские (V1 phase 1). parent_id зарезервирован под threading (канон §6.2,
+// spec §2 row 13). В V1 всегда NULL, рендер плоский, миграция в фазу 2 без новых колонок.
+// deletedBy: null = живой коммент; иначе userId — определяет плашку:
+//   deletedBy === authorId → «удалён автором», иначе → «удалён администратором».
+export const comments = pgTable("comments", {
+  id: text("id").primaryKey(),
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  parentId: text("parent_id"),
+  contentText: text("content_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: text("deleted_by").references(() => users.id),
+}, (t) => ({
+  postCreatedIdx: index("comments_post_created_idx").on(t.postId, t.createdAt),
+  authorCreatedIdx: index("comments_author_created_idx").on(t.authorId, t.createdAt),
 }));
 
 // uploads — изображения, нормализованные через /api/upload и положенные в Yandex storage.
