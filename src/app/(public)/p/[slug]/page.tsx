@@ -6,6 +6,8 @@ import { posts, users, postTags, tags } from "@db/schema";
 import { PostBody } from "@/components/posts/PostBody";
 import { PostHero } from "@/components/posts/PostHero";
 import { PostTags } from "@/components/posts/PostTags";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { PostAdminMenu } from "@/components/moderation/PostAdminMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ async function loadPost(slug: string) {
       status: posts.status,
       pubAt: posts.pubAt,
       deletedAt: posts.deletedAt,
+      hiddenByAdminAt: posts.hiddenByAdminAt,
       authorUsername: users.username,
     })
     .from(posts)
@@ -46,6 +49,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }) 
   const post = await loadPost(slug);
   if (!post) return {};
   if (post.deletedAt) return {};
+  if (post.hiddenByAdminAt) return {};
   if (post.status === "draft") return {};
   return {
     title: post.title,
@@ -57,26 +61,20 @@ export async function generateMetadata({ params }: { params: Promise<Params> }) 
   };
 }
 
-export default async function PostPage({ params }: { params: Promise<Params> }) {
+export default async function PostPage({
+  params, searchParams,
+}: { params: Promise<Params>; searchParams: Promise<{ cpage?: string }> }) {
   const { slug } = await params;
+  const { cpage } = await searchParams;
   const post = await loadPost(slug);
   if (!post) notFound();
 
   const session = await auth();
   const isOwner = session?.user?.id === post.authorId;
+  const isAdmin = session?.user?.role === "admin";
 
-  if (post.deletedAt) {
-    // TODO(plan-06): true 410 status code via route handler (требует разнесения
-    // логики между page.tsx и route.ts). В plan-04 — JSX-разметка "удалён";
-    // для индексаторов хватает meta:noindex (нет в sitemap).
-    return (
-      <main className="container mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="font-display text-2xl mb-3">Пост удалён</h1>
-        <p className="text-muted-foreground">Эта запись была удалена автором.</p>
-      </main>
-    );
-  }
-
+  if (post.deletedAt) notFound();
+  if (post.hiddenByAdminAt && !isAdmin) notFound();
   if (post.status === "draft") notFound();
   if (post.status === "archived" && !isOwner) notFound();
 
@@ -96,8 +94,24 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
           (Пост в архиве — виден только тебе.)
         </p>
       )}
+      {isAdmin && (
+        <div className="max-w-[680px] mx-auto px-4 mt-4 flex justify-end">
+          <PostAdminMenu
+            postId={post.id}
+            authorId={post.authorId}
+            isHidden={post.hiddenByAdminAt != null}
+          />
+        </div>
+      )}
       <PostBody html={html} />
       <PostTags tags={postTagsList} />
+      <div className="max-w-[680px] mx-auto px-4">
+        <CommentThread
+          postId={post.id}
+          postSlug={post.slug}
+          page={Number(cpage ?? "1") || 1}
+        />
+      </div>
     </article>
   );
 }

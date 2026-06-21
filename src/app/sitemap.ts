@@ -17,7 +17,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const publishedPosts = await db
     .select({ slug: posts.slug, updatedAt: posts.updatedAt })
     .from(posts)
-    .where(and(eq(posts.status, "published"), isNull(posts.deletedAt)));
+    .where(and(
+      eq(posts.status, "published"),
+      isNull(posts.deletedAt),
+      isNull(posts.hiddenByAdminAt),
+    ));
 
   const allTags = await db.select({ slug: tags.slug }).from(tags);
 
@@ -30,6 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         eq(posts.authorId, users.id),
         eq(posts.status, "published"),
         isNull(posts.deletedAt),
+        isNull(posts.hiddenByAdminAt),
       ),
     )
     .where(isNull(users.bannedAt));

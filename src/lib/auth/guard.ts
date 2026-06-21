@@ -29,6 +29,7 @@ export async function requireOwnPost(postId: string) {
       eq(posts.id, postId),
       eq(posts.authorId, session.user.id),
       isNull(posts.deletedAt),
+      isNull(posts.hiddenByAdminAt),
     ))
     .limit(1);
 

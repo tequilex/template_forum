@@ -77,7 +77,11 @@ async function hydrateCards(rows: PostRow[]): Promise<PostCardData[]> {
   });
 }
 
-const PUBLISHED_PUBLIC = and(eq(posts.status, "published"), isNull(posts.deletedAt));
+const PUBLISHED_PUBLIC = and(
+  eq(posts.status, "published"),
+  isNull(posts.deletedAt),
+  isNull(posts.hiddenByAdminAt),
+);
 
 // ─── /  главная лента ──────────────────────────────────────────────────────
 
