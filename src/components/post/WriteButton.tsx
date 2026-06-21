@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { Route } from "next";
 import { PenSquare } from "lucide-react";
 import { content } from "@theme/content";
 
@@ -7,12 +6,15 @@ export type WriteButtonVariant = "nav" | "fab" | "cta";
 
 interface Props {
   variant: WriteButtonVariant;
-  isAuthed: boolean;
   className?: string;
 }
 
-export function WriteButton({ variant, isAuthed, className = "" }: Props) {
-  const href = (isAuthed ? "/new" : "/login?from=/new") as Route;
+// V1: показывается только залогиненным (см. LeftNav/BottomNav/UserProfileHeader
+// — все рендерят это под условием isAuthed/isOwner). Гость-вариант со spec §1
+// (`/login?callbackUrl=/new`) отложен — требует прокидки callbackUrl через
+// login page + ProviderButtons + VK-старт. См. retro plan-5b «отклонения».
+export function WriteButton({ variant, className = "" }: Props) {
+  const href = "/new";
 
   if (variant === "nav") {
     return (

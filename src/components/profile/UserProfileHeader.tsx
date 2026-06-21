@@ -37,7 +37,7 @@ export function UserProfileHeader(props: UserProfileHeaderProps) {
         <UserStatsRow postsCount={postsCount} registeredAt={registeredAt} topTags={topTags} />
         {isOwner && (
           <div className="mt-4">
-            <WriteButton variant="cta" isAuthed />
+            <WriteButton variant="cta" />
           </div>
         )}
       </div>

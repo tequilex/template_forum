@@ -39,7 +39,6 @@ export function BottomNav({ profileHref, isAuthed, className = "" }: BottomNavPr
       {isAuthed && (
         <WriteButton
           variant="fab"
-          isAuthed
           className="fixed bottom-20 right-4 z-40"
         />
       )}

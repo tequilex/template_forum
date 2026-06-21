@@ -49,7 +49,7 @@ export function LeftNav({ profileHref, isAuthed, className = "" }: LeftNavProps)
     <nav className={`flex flex-col gap-1 text-sm ${className}`} aria-label="Главная навигация">
       {isAuthed && (
         <>
-          <WriteButton variant="nav" isAuthed className="mb-2" />
+          <WriteButton variant="nav" className="mb-2" />
           <div className="h-px bg-border my-1" />
         </>
       )}
