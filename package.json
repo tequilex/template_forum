@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "cleanup:orphans": "tsx scripts/cleanup-orphan-uploads.ts"
+    "cleanup:orphans": "tsx scripts/cleanup-orphan-uploads.ts",
+    "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts"
   },
   "dependencies": {
     "@auth/core": "0.41.2",

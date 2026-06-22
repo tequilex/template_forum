@@ -10,8 +10,16 @@ const oauthAvatarHosts: Pattern[] = [
   { protocol: "https", hostname: "*.vk.com" },
 ];
 
+// Демо-сид (scripts/seed-demo.ts) кладёт picsum.photos URL'ы в coverUrl и в
+// inline-картинки внутри content. Только для dev/демо — реальные посты
+// обязаны хранить картинки в R2 через /api/upload. Убрать при чистке prod-конфига.
+const demoImageHosts: Pattern[] = [
+  { protocol: "https", hostname: "picsum.photos" },
+  { protocol: "https", hostname: "fastly.picsum.photos" },
+];
+
 const r2Public = process.env.R2_PUBLIC_BASE;
-const remotePatterns: Pattern[] = [...oauthAvatarHosts];
+const remotePatterns: Pattern[] = [...oauthAvatarHosts, ...demoImageHosts];
 
 if (r2Public) {
   try {
