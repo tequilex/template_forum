@@ -11,6 +11,7 @@ const baseProps = {
     coverUrl: "https://example.test/cover.webp",
     pubAt: new Date("2026-06-15T10:00:00Z"),
     readingMinutes: 3,
+    commentCount: 0,
   },
   author: {
     id: "u1",

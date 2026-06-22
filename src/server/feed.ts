@@ -7,6 +7,7 @@ import { posts, postTags, tags, users } from "@db/schema";
 import { extractPlainText } from "@/components/editor/extractPlainText";
 import { readingTimeMinutes } from "@/components/feed/readingTime";
 import type { PostCardData } from "@/components/feed/PostCard";
+import { getCommentCountByPosts } from "@/server/comments";
 
 export const FEED_PAGE_SIZE = 20;
 
@@ -35,16 +36,19 @@ async function hydrateCards(rows: PostRow[]): Promise<PostCardData[]> {
 
   // Один доп. запрос на тэги. На V1 (≤20 постов × ≤5 тэгов) — десятки строк.
   // Альтернатива LATERAL/array_agg — over-engineering для V1.
-  const rawTags = await getDb()
-    .select({
-      postId: postTags.postId,
-      id: tags.id,
-      slug: tags.slug,
-      name: tags.name,
-    })
-    .from(postTags)
-    .innerJoin(tags, eq(tags.id, postTags.tagId))
-    .where(inArray(postTags.postId, postIds));
+  const [rawTags, commentCounts] = await Promise.all([
+    getDb()
+      .select({
+        postId: postTags.postId,
+        id: tags.id,
+        slug: tags.slug,
+        name: tags.name,
+      })
+      .from(postTags)
+      .innerJoin(tags, eq(tags.id, postTags.tagId))
+      .where(inArray(postTags.postId, postIds)),
+    getCommentCountByPosts(postIds),
+  ]);
 
   const tagsByPost = new Map<string, TagPair["tag"][]>();
   for (const t of rawTags) {
@@ -65,6 +69,7 @@ async function hydrateCards(rows: PostRow[]): Promise<PostCardData[]> {
         coverUrl: r.coverUrl,
         pubAt: r.pubAt,
         readingMinutes: readingTimeMinutes(plain),
+        commentCount: commentCounts.get(r.id) ?? 0,
       },
       author: {
         id: r.authorId,

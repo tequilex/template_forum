@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { UserStatsRow } from "./UserStatsRow";
 import { WriteButton } from "@/components/post/WriteButton";
 import { UserAdminMenu } from "@/components/moderation/UserAdminMenu";
+import { Avatar } from "@/components/ui/Avatar";
 
 interface UserProfileHeaderProps {
   userId: string;
@@ -26,17 +26,7 @@ export function UserProfileHeader(props: UserProfileHeaderProps) {
 
   return (
     <header className="flex items-start gap-4 mb-6 pb-4 border-b border-border">
-      {image ? (
-        <Image
-          src={image}
-          alt=""
-          width={72}
-          height={72}
-          className="rounded-full shrink-0"
-        />
-      ) : (
-        <div className="w-[72px] h-[72px] rounded-full bg-muted shrink-0" />
-      )}
+      <Avatar src={image} name={name} username={username} size={72} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

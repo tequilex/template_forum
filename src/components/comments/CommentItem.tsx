@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { CommentItem as CommentItemData } from "@/server/comments";
 import { renderCommentText } from "./render-text";
 import { CommentDeletedPlaceholder } from "./CommentDeletedPlaceholder";
 import { CommentItemActions } from "./CommentItemActions";
+import { Avatar } from "@/components/ui/Avatar";
 import { content } from "@theme/content";
 
 interface Props {
@@ -26,9 +26,12 @@ export function CommentItem({ comment, postId, currentUserId, currentUserIsAdmin
   return (
     <article id={`comment-${comment.id}`} className="border-b border-border py-4">
       <header className="flex items-center gap-2 text-sm mb-2">
-        {comment.authorImage && (
-          <Image src={comment.authorImage} alt="" width={24} height={24} className="rounded-full" />
-        )}
+        <Avatar
+          src={comment.authorImage}
+          name={comment.authorName}
+          username={comment.authorUsername}
+          size={24}
+        />
         {isAuthorBanned || !comment.authorUsername ? (
           <span className="font-medium text-muted-foreground">
             {comment.authorName ?? "—"}

@@ -7,6 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Avatar } from "@/components/ui/Avatar";
 import { content } from "@theme/content";
 
 type Props = {
@@ -26,12 +27,7 @@ export function UserMenu({ username, name, image }: Props) {
     // прыгает (вдвойне — с нашим scrollbar-gutter: stable место уже занято).
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
-        {image
-          /* eslint-disable-next-line @next/next/no-img-element */
-          ? <img src={image} alt="" className="h-9 w-9 rounded-full" />
-          : <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-              {(name ?? username).charAt(0).toUpperCase()}
-            </div>}
+        <Avatar src={image} name={name} username={username} size={36} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[180px]">
         <DropdownMenuItem asChild>

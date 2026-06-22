@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { comments, users } from "@db/schema";
 
@@ -72,4 +72,18 @@ export async function getCommentCount(postId: string): Promise<number> {
     .from(comments)
     .where(and(eq(comments.postId, postId), isNull(comments.deletedAt)));
   return Number(n);
+}
+
+// Batch-вариант для feed/PostCard: одним запросом получаем счётчики для всех
+// постов на странице. Возвращаем Map (а не объект) — постов в map'е может не
+// быть, если ни одного коммента нет; вызывающий делает `map.get(id) ?? 0`.
+export async function getCommentCountByPosts(postIds: string[]): Promise<Map<string, number>> {
+  if (postIds.length === 0) return new Map();
+  const db = getDb();
+  const rows = await db
+    .select({ postId: comments.postId, n: count() })
+    .from(comments)
+    .where(and(inArray(comments.postId, postIds), isNull(comments.deletedAt)))
+    .groupBy(comments.postId);
+  return new Map(rows.map((r) => [r.postId, Number(r.n)]));
 }

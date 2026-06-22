@@ -1,8 +1,10 @@
 import type { Route } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { MessageSquare } from "lucide-react";
 import { content } from "@theme/content";
 import { TagBadge } from "@/components/tags/TagBadge";
+import { Avatar } from "@/components/ui/Avatar";
 
 export interface PostCardData {
   post: {
@@ -13,6 +15,7 @@ export interface PostCardData {
     coverUrl: string | null;
     pubAt: Date | null;
     readingMinutes: number;
+    commentCount: number;
   };
   author: {
     id: string;
@@ -64,15 +67,7 @@ export function PostCard({ post, author, tags }: PostCardData) {
           <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{post.excerpt}</p>
         )}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {author.image && (
-            <Image
-              src={author.image}
-              alt=""
-              width={20}
-              height={20}
-              className="rounded-full"
-            />
-          )}
+          <Avatar src={author.image} name={author.name} username={author.username} size={20} />
           <span>{authorName}</span>
           {dateLabel && (
             <>
@@ -82,6 +77,14 @@ export function PostCard({ post, author, tags }: PostCardData) {
           )}
           <span>·</span>
           <span>{content.feed.readingTime(post.readingMinutes)}</span>
+          <span>·</span>
+          <span
+            className="inline-flex items-center gap-1"
+            aria-label={content.comments.countLabel(post.commentCount)}
+          >
+            <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+            {post.commentCount}
+          </span>
         </div>
       </div>
     </article>
