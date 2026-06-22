@@ -16,6 +16,7 @@ export default async function BannedPage() {
         <p className="text-sm text-muted-foreground mb-2">{content.banned.reasonLabel}</p>
         <p className="text-base">{session.user.banReason ?? content.banned.noReason}</p>
       </div>
+      <p className="text-sm text-muted-foreground mb-6">{content.banned.contact}</p>
       <form action="/api/auth/signout" method="POST">
         <Button type="submit" variant="outline">{content.banned.logout}</Button>
       </form>

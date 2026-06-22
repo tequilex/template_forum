@@ -2770,3 +2770,29 @@ git commit -m "docs(plan-5b): README engagement section + retro"
 - **HTTP-статус для деленых постов:** сейчас 404; spec §8.6 канона предполагает 410 «Gone» для soft-deleted — отложено в plan-06.
 - **Pre-existing flaky tests cleanup:** проверить остальные интеграционные тесты на тот же ULID-prefix паттерн (`slice(0, N)` для derived-уникальностей).
 - **WriteButton для гостя + callbackUrl flow:** spec §1 + §6 row 6 — гость видит кнопку, нажатие ведёт на `/login?callbackUrl=/new`, после логина возвращает на `/new`. Требует: (а) LoginPage читает `searchParams.callbackUrl`, прокидывает в `ProviderButtons`; (б) `ProviderButtons` использует переданный callbackUrl в `signIn(...)` и в href VK-кнопок (`/api/oauth/vk/start?provider=...&callbackUrl=...`); (в) `/api/oauth/vk/start` route учитывает `callbackUrl` и сохраняет его в state/cookie до возврата с OAuth; (г) в LeftNav/BottomNav убрать `{isAuthed && …}` обёртку вокруг WriteButton и вернуть гость-вариант с правильным href.
+
+---
+
+## Post-plan правки (приёмка 2026-06-22)
+
+Ручная приёмка вскрыла три gap'а в spec'е, которые имплементация унаследовала буквально. Все три закрыты до коммита plan-5b в master, без отдельного плана — простые follow-up'ы.
+
+**1. Скрытый админом пост: автор получал 404 из своего же /drafts.**
+Spec §1.4 описывал бейдж «Скрыт администратором» в `/drafts`, но не уточнял, что происходит при клике. Реальный edit-guard `requireOwnPost` фильтрует по `hiddenByAdminAt IS NULL` → `/edit/[id]` тоже 404. Автору некуда было нажать.
+- `loadPost` в `/p/[slug]` теперь джойнит `users` по `hiddenByAdminId` (alias `hidden_by_user`), отдаёт `hiddenByAdminUsername`.
+- Visibility: `if (post.hiddenByAdminAt && !isAdmin && !isOwner) notFound();` — автор и админ открывают, гость по-прежнему 404.
+- Плашка над `<PostBody>`: автору — «Этот пост скрыт администратором. Он недоступен публично.», админу — «Скрыт администратором @{username}.» (или fallback «Скрыт администратором.» если кто-то снёс хайдера).
+- `DraftsList`: для `hiddenByAdminAt != null` ссылка ведёт на `/p/[slug]`, не на `/edit/[id]`.
+- Новые content-ключи: `moderation.hiddenBannerOwner`, `moderation.hiddenBannerAdmin(username)`, `moderation.hiddenBannerAdminUnknown`.
+
+**2. Админ не мог разбанить юзера из UI.**
+PostAdminMenu умеет банить, но разбан был только через `db:studio` — `getUserByUsername` отдаёт юзера, а page-guard в `/u/[username]` делал `notFound()` для всех при `bannedAt != null`. То есть админ не мог даже зайти на профиль забаненного.
+- `/u/[username]` теперь: `if (user.bannedAt && !isAdmin) notFound();` — забаненный публично всё ещё 404, админу доступен.
+- Новый компонент `src/components/moderation/UserAdminMenu.tsx`: трёхточечный dropdown в `UserProfileHeader`, виден только админу на чужом профиле (`isAdmin && !isOwner`). В состоянии «не забанен» — пункт «Заблокировать автора» через `BanUserDialog`; в состоянии «забанен» — «Разблокировать» через `ConfirmDialog` → `adminUnbanUser` (сервер-экшен уже был с plan-5b Task 8).
+- `UserProfileHeader` теперь принимает `userId`, `isAdmin`, `isBanned`. Для забаненного юзера показывает inline-бейдж «Заблокирован» рядом с username.
+- Новые content-ключи: `moderation.userMenuLabel`, `moderation.unbanUserConfirm`.
+
+**3. /banned: добавлена контактная строка.**
+Spec §1 описывал «причина + кнопка выйти», но реальная польза без contact'а нулевая (юзер не знает, куда писать, чтобы оспорить). Добавлено в [`src/app/banned/page.tsx`](../../../src/app/banned/page.tsx): `<p>{content.banned.contact}</p>` (текст: «Для подробной информации напишите: test@mail.ru») между причиной и кнопкой Logout. Адрес в content.ts → меняется без правок page-кода.
+
+**Что это значит для phase-2 spec'ов:** в spec-документах модерации впредь явно расписывать, какие role-комбинации видят что и куда ведут ссылки (а не «бейдж "скрыт"» в вакууме). Author-flow и admin-flow часто противоречат друг другу по умолчанию (404 для всех vs доступ для админа) — это нужно проектировать, а не наследовать из общих guard'ов.

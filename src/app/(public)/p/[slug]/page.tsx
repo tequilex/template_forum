@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { auth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { posts, users, postTags, tags } from "@db/schema";
@@ -8,12 +9,14 @@ import { PostHero } from "@/components/posts/PostHero";
 import { PostTags } from "@/components/posts/PostTags";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { PostAdminMenu } from "@/components/moderation/PostAdminMenu";
+import { content } from "@theme/content";
 
 export const dynamic = "force-dynamic";
 
 type Params = { slug: string };
 
 async function loadPost(slug: string) {
+  const hiddenBy = alias(users, "hidden_by_user");
   const rows = await getDb()
     .select({
       id: posts.id,
@@ -26,10 +29,12 @@ async function loadPost(slug: string) {
       pubAt: posts.pubAt,
       deletedAt: posts.deletedAt,
       hiddenByAdminAt: posts.hiddenByAdminAt,
+      hiddenByAdminUsername: hiddenBy.username,
       authorUsername: users.username,
     })
     .from(posts)
     .leftJoin(users, eq(users.id, posts.authorId))
+    .leftJoin(hiddenBy, eq(hiddenBy.id, posts.hiddenByAdminId))
     .where(eq(posts.slug, slug))
     .limit(1);
   return rows[0] ?? null;
@@ -74,7 +79,9 @@ export default async function PostPage({
   const isAdmin = session?.user?.role === "admin";
 
   if (post.deletedAt) notFound();
-  if (post.hiddenByAdminAt && !isAdmin) notFound();
+  // Скрытый админом пост: автор тоже должен иметь возможность открыть и увидеть
+  // плашку (иначе из /drafts ведёт в 404). Публично — по-прежнему 404.
+  if (post.hiddenByAdminAt && !isAdmin && !isOwner) notFound();
   if (post.status === "draft") notFound();
   if (post.status === "archived" && !isOwner) notFound();
 
@@ -93,6 +100,17 @@ export default async function PostPage({
         <p className="max-w-[680px] mx-auto px-4 mt-4 text-sm text-muted-foreground italic">
           (Пост в архиве — виден только тебе.)
         </p>
+      )}
+      {post.hiddenByAdminAt && (isOwner || isAdmin) && (
+        <div className="max-w-[680px] mx-auto px-4 mt-4">
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {isAdmin
+              ? (post.hiddenByAdminUsername
+                  ? content.moderation.hiddenBannerAdmin(post.hiddenByAdminUsername)
+                  : content.moderation.hiddenBannerAdminUnknown)
+              : content.moderation.hiddenBannerOwner}
+          </p>
+        </div>
       )}
       {isAdmin && (
         <div className="max-w-[680px] mx-auto px-4 mt-4 flex justify-end">

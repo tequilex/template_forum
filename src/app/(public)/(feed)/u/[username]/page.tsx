@@ -32,12 +32,17 @@ export default async function UserProfilePage({ params, searchParams }: PageProp
   const page = Number(sp.page ?? "1") || 1;
 
   const user = await getUserByUsername(username);
-  if (!user || !user.username || user.bannedAt) notFound();
+  if (!user || !user.username) notFound();
 
-  const [{ postsCount, topTags }, { items, currentPage, totalPages }, session] = await Promise.all([
+  const session = await auth();
+  const isAdmin = session?.user?.role === "admin";
+  // Заблокированных пользователей публично прячем (404), но админ должен иметь
+  // доступ к профилю — иначе разблокировать можно только через прямой SQL.
+  if (user.bannedAt && !isAdmin) notFound();
+
+  const [{ postsCount, topTags }, { items, currentPage, totalPages }] = await Promise.all([
     getUserProfile(user.id),
     getUserFeedPage(user.id, page),
-    auth(),
   ]);
 
   if (page > totalPages && items.length === 0 && totalPages > 0) {
@@ -49,6 +54,7 @@ export default async function UserProfilePage({ params, searchParams }: PageProp
   return (
     <>
       <UserProfileHeader
+        userId={user.id}
         username={user.username}
         name={user.name}
         image={user.image}
@@ -57,6 +63,8 @@ export default async function UserProfilePage({ params, searchParams }: PageProp
         registeredAt={user.createdAt}
         topTags={topTags}
         isOwner={isOwner}
+        isAdmin={isAdmin}
+        isBanned={user.bannedAt != null}
       />
       <PostList
         items={items}
