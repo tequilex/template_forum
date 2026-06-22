@@ -23,6 +23,7 @@ export default async function LoginPage() {
   const env = getEnv();
   const vkEnabled = Boolean(env.VK_CLIENT_ID && env.VK_CLIENT_SECRET);
   const hasAny = nextAuthProviders.length > 0 || vkEnabled;
+  const isDev = env.NODE_ENV !== "production";
 
   // /login без FeedShell — это самостоятельная страница входа. Центрируем
   // карточку по обеим осям через flex на <main>. Над карточкой — back-link
@@ -44,6 +45,25 @@ export default async function LoginPage() {
           {hasAny
             ? <ProviderButtons nextAuthProviders={nextAuthProviders} vkEnabled={vkEnabled} />
             : <p className="text-sm text-muted-foreground text-center">{content.auth.noProviders}</p>}
+          {isDev && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center mb-3">dev only</p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href="/api/dev/login"
+                  className="block w-full text-center rounded-md border border-border bg-muted/50 px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Войти как Dev User
+                </a>
+                <a
+                  href="/api/dev/login?role=admin"
+                  className="block w-full text-center rounded-md border border-border bg-muted/50 px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Войти как Dev Admin
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
