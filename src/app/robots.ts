@@ -1,0 +1,16 @@
+import type { MetadataRoute } from "next";
+import { getEnv } from "@/lib/env";
+
+export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/drafts", "/edit/", "/new", "/admin", "/banned", "/auth/", "/api/", "/dev/"],
+      },
+    ],
+    sitemap: `${siteUrl}/sitemap.xml`,
+  };
+}
