@@ -5,6 +5,7 @@ import { seo } from "@theme/seo";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { YandexMetrika } from "@/components/analytics/YandexMetrika";
 import "./globals.css";
 import "@theme/tokens.css";
 import "@theme/typography.css";
@@ -23,6 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${fontDisplay.variable} ${fontText.variable}`}
     >
       <body className="bg-background text-foreground font-sans antialiased min-h-screen flex flex-col">
+        {process.env.NODE_ENV === "production" && process.env.YANDEX_METRIKA_ID && (
+          <YandexMetrika counterId={process.env.YANDEX_METRIKA_ID} />
+        )}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {/* Глобальный progress-bar поверх <html>: даёт моментальный visual
            * feedback на любой client-side навигации (Link/router.push), пока
