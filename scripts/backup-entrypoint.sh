@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-apk add --no-cache aws-cli tzdata
+apk add --no-cache aws-cli coreutils tzdata
 export TZ=Europe/Moscow
 export AWS_ACCESS_KEY_ID="${BACKUP_S3_ACCESS_KEY_ID}"
 export AWS_SECRET_ACCESS_KEY="${BACKUP_S3_SECRET_ACCESS_KEY}"

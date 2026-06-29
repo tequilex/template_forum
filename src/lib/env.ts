@@ -97,7 +97,12 @@ const schema = z.object({
 export type Env = z.infer<typeof schema>;
 
 export function parseEnv(input: Record<string, string | undefined>): Env {
-  const result = schema.safeParse(input);
+  const normalized: Record<string, string | undefined> = {};
+  for (const k of Object.keys(input)) {
+    const v = input[k];
+    normalized[k] = v === "" ? undefined : v;
+  }
+  const result = schema.safeParse(normalized);
   if (!result.success) {
     throw new Error("Invalid env: " + result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; "));
   }
