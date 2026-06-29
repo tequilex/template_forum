@@ -1,11 +1,14 @@
 import { ruPlural } from "@/lib/plural";
 
+const SITE_CONTACT_EMAIL = "test@mail.ru";
+
 export const content = {
   site: {
     name: "Skelet",
     shortName: "Skelet",
     tagline: "Сообщество (тестовая ниша)",
     description: "Тестовый инстанс скелета. Замените текстами своей ниши в theme/content.ts.",
+    contactEmail: SITE_CONTACT_EMAIL,
   },
   nav: {
     home: "Лента",
@@ -54,6 +57,8 @@ export const content = {
     about: "О проекте",
     rules: "Правила",
     contacts: "Контакты",
+    disclaimer: "Используем cookies и Yandex.Metrika для аналитики.",
+    privacyLink: "Политика",
   },
   consent: {
     text: "Сайт использует cookies для аналитики.",
@@ -105,8 +110,25 @@ export const content = {
     heading: "Ваша учётная запись заблокирована",
     reasonLabel: "Причина:",
     noReason: "Причина не указана.",
-    contact: "Для подробной информации напишите: test@mail.ru",
+    contact: `Для подробной информации напишите: ${SITE_CONTACT_EMAIL}`,
     logout: "Выйти",
+  },
+  privacy: {
+    title: "Политика конфиденциальности",
+    intro: "Этот сайт — небольшой блог на платформе Skelet. Ниже описано, какие данные собираем и зачем.",
+    section: {
+      whoWeAre: "Кто мы",
+      whoWeAreBody: `Skelet — независимый проект. По вопросам обработки персональных данных пишите на ${SITE_CONTACT_EMAIL}.`,
+      whatWeCollect: "Какие данные собираем",
+      whatWeCollectBody: "Email и публичный профиль (имя, никнейм, аватар) при входе через OAuth-провайдеры (Yandex, VK, Google, GitHub). Контент, который вы публикуете (посты, комментарии, темы). Технические данные через Yandex.Metrika — IP, User-Agent, путь, реферер, длительность сессии (без webvisor).",
+      cookies: "Cookies",
+      cookiesBody: "Используем cookies для авторизации (next-auth) и Yandex.Metrika (anonymous-ID, рекламные cookies не ставим).",
+      delete: "Как удалить аккаунт",
+      deleteBody: `Чтобы удалить аккаунт, напишите на ${SITE_CONTACT_EMAIL} — удалим в течение 7 дней.`,
+      contact: "Контакты",
+    },
+    contact: `По вопросам обработки данных пишите: ${SITE_CONTACT_EMAIL}`,
+    updatedAt: "Обновлено: 2026-06-29",
   },
   write: {
     label: "Написать",
