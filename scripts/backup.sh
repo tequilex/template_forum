@@ -1,5 +1,20 @@
 #!/bin/sh
-# Будет реализовано в плане 6 (niche-fork tooling).
-# В V1 контейнер просто спит и не делает бэкапов локально.
-echo "backup.sh: placeholder, will be implemented in plan 6"
-sleep infinity
+set -e
+
+DATE=$(date +%Y-%m-%d-%H%M)
+FILE="backup-${DATE}.sql.gz"
+LOCAL="/tmp/${FILE}"
+
+echo "[backup] starting at $(date -Iseconds)"
+PGPASSWORD="${DB_PASSWORD}" pg_dump \
+  -h db -U app -d app \
+  --no-owner --no-acl --format=plain \
+  | gzip -9 > "${LOCAL}"
+SIZE=$(du -h "${LOCAL}" | cut -f1)
+echo "[backup] dump done: ${FILE} (${SIZE})"
+
+aws --endpoint-url="${BACKUP_S3_ENDPOINT}" \
+    s3 cp "${LOCAL}" "s3://${BACKUP_S3_BUCKET}/db/${FILE}"
+
+rm "${LOCAL}"
+echo "[backup] uploaded: s3://${BACKUP_S3_BUCKET}/db/${FILE}"
