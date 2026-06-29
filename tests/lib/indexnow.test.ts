@@ -1,0 +1,105 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { pingIndexNow, postUrlsForIndexNow } from "@/lib/indexnow";
+import { _resetEnvCacheForTests } from "@/lib/env";
+
+const env = process.env as Record<string, string | undefined>;
+
+const ORIGINAL_NODE_ENV = env.NODE_ENV;
+const ORIGINAL_INDEXNOW_KEY = env.INDEXNOW_KEY;
+const ORIGINAL_NEXTAUTH_URL = env.NEXTAUTH_URL;
+
+describe("pingIndexNow", () => {
+  beforeEach(() => {
+    _resetEnvCacheForTests();
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    env.NODE_ENV = ORIGINAL_NODE_ENV;
+    env.INDEXNOW_KEY = ORIGINAL_INDEXNOW_KEY;
+    env.NEXTAUTH_URL = ORIGINAL_NEXTAUTH_URL;
+    _resetEnvCacheForTests();
+  });
+
+  it("в NODE_ENV=development — fetch не вызывается", async () => {
+    env.NODE_ENV = "development";
+    env.INDEXNOW_KEY = "abc12345";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response("", { status: 200 }));
+    await pingIndexNow(["https://example.ru/p/x"]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("в production без INDEXNOW_KEY — fetch не вызывается", async () => {
+    env.NODE_ENV = "production";
+    delete env.INDEXNOW_KEY;
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response("", { status: 200 }));
+    await pingIndexNow(["https://example.ru/p/x"]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("пустой urls — fetch не вызывается", async () => {
+    env.NODE_ENV = "production";
+    env.INDEXNOW_KEY = "abc12345";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response("", { status: 200 }));
+    await pingIndexNow([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("production + key + urls — POST на api.indexnow.org с правильным body", async () => {
+    env.NODE_ENV = "production";
+    env.INDEXNOW_KEY = "abc12345";
+    env.NEXTAUTH_URL = "https://example.ru";
+    env.DOMAIN = "example.ru";
+    env.LETSENCRYPT_EMAIL = "ops@example.ru";
+    env.STORAGE_ENDPOINT = "https://s3.timeweb.cloud";
+    env.STORAGE_BUCKET = "b";
+    env.STORAGE_ACCESS_KEY_ID = "k";
+    env.STORAGE_SECRET_ACCESS_KEY = "s";
+    env.STORAGE_PUBLIC_BASE = "https://images.example.ru";
+    _resetEnvCacheForTests();
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response("", { status: 200 }));
+    await pingIndexNow(["https://example.ru/p/x", "https://example.ru/"]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.indexnow.org/indexnow");
+    expect((init as RequestInit).method).toBe("POST");
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.host).toBe("example.ru");
+    expect(body.key).toBe("abc12345");
+    expect(body.keyLocation).toBe("https://example.ru/abc12345.txt");
+    expect(body.urlList).toEqual(["https://example.ru/p/x", "https://example.ru/"]);
+  });
+
+  it("fetch падает — не пробрасывает ошибку (fire-and-forget)", async () => {
+    env.NODE_ENV = "production";
+    env.INDEXNOW_KEY = "abc12345";
+    env.NEXTAUTH_URL = "https://example.ru";
+    env.DOMAIN = "example.ru";
+    env.LETSENCRYPT_EMAIL = "ops@example.ru";
+    env.STORAGE_ENDPOINT = "https://s3.timeweb.cloud";
+    env.STORAGE_BUCKET = "b";
+    env.STORAGE_ACCESS_KEY_ID = "k";
+    env.STORAGE_SECRET_ACCESS_KEY = "s";
+    env.STORAGE_PUBLIC_BASE = "https://images.example.ru";
+    _resetEnvCacheForTests();
+    vi.spyOn(global, "fetch").mockRejectedValue(new Error("network down"));
+    await expect(pingIndexNow(["https://example.ru/x"])).resolves.toBeUndefined();
+  });
+});
+
+describe("postUrlsForIndexNow", () => {
+  it("включает post URL, главную, теги, и автора если есть username", () => {
+    const urls = postUrlsForIndexNow({
+      siteUrl: "https://example.ru/",
+      postSlug: "hello",
+      authorUsername: "alice",
+      tagSlugs: ["js", "rust"],
+    });
+    expect(urls).toEqual([
+      "https://example.ru/p/hello",
+      "https://example.ru/",
+      "https://example.ru/t/js",
+      "https://example.ru/t/rust",
+      "https://example.ru/u/alice",
+    ]);
+  });
+});
