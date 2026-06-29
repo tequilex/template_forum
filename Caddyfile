@@ -1,18 +1,29 @@
+{
+	email {$LETSENCRYPT_EMAIL}
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
 {$DOMAIN} {
-  encode gzip zstd
-  reverse_proxy app:3000
+	encode gzip zstd
+	reverse_proxy app:3000
 
-  @static {
-    path /_next/static/*
-    path /favicon.ico
-    path /icons/*
-  }
-  header @static Cache-Control "public, max-age=31536000, immutable"
+	@static {
+		path /_next/static/*
+		path /favicon.ico
+		path /icons/*
+		path /og/*
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
 
-  header {
-    Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    X-Content-Type-Options nosniff
-    Referrer-Policy strict-origin-when-cross-origin
-    Permissions-Policy "interest-cohort=()"
-  }
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "interest-cohort=()"
+		X-Frame-Options DENY
+		-Server
+	}
 }
