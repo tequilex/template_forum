@@ -129,7 +129,27 @@ CLI-визард для форка: `pnpm new-niche` (план 6).
 
 ## Деплой
 
-См. [docs/superpowers/specs/2026-06-05-skelet-blog-design.md](docs/superpowers/specs/2026-06-05-skelet-blog-design.md) → раздел «Деплой».
+Skelet деплоится на Timeweb Cloud VPS через docker-compose (caddy + app + db + backup). HTTPS — автоматически через Caddy + Let's Encrypt.
+
+Подробности: [docs/DEPLOY.md](./docs/DEPLOY.md). Восстановление из бэкапа: [docs/RECOVERY.md](./docs/RECOVERY.md).
+
+Общая архитектура: [docs/superpowers/specs/2026-06-05-skelet-blog-design.md](docs/superpowers/specs/2026-06-05-skelet-blog-design.md) → раздел «Деплой».
+
+## SEO
+
+- `sitemap.xml` и `robots.txt` — динамические (`src/app/sitemap.ts`, `src/app/robots.ts`).
+- JSON-LD на публичных страницах: `BlogPosting` + `BreadcrumbList` + `WebSite` (`src/lib/jsonld.ts`).
+- OG-изображения: реальная обложка поста, иначе динамика через `next/og` (`src/app/og/[slug]/route.tsx`).
+- IndexNow: при `publishPost`/`updatePost`/`hidePost`/`deletePost`/`adminBanUser` пингуем `api.indexnow.org` (`src/lib/indexnow.ts`).
+
+## Analytics
+
+Яндекс.Метрика (`clickmap + trackLinks + accurateTrackBounce`, без webvisor) — `src/components/analytics/YandexMetrika.tsx`. Грузится только в `NODE_ENV=production` при `YANDEX_METRIKA_ID`. Cookie-баннер не делаем; в футере disclaimer + страница `/privacy`.
+
+## Monitoring
+
+- `/api/health` — `SELECT 1` к Postgres, 200/503.
+- UptimeRobot пингует `/api/health` каждые 5 минут, алёрты в Telegram (см. `docs/DEPLOY.md` §8.5).
 
 ## sharp на Linux x64 (Hetzner)
 
