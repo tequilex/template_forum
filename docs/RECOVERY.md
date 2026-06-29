@@ -77,4 +77,4 @@ docker compose start app
 
 | Дата | Дамп | Counts (restore vs prod) | Кто | Заметки |
 |---|---|---|---|---|
-| _(в первый прогон вписать)_ |  |  |  |  |
+| 2026-06-29 | local-drill (synthetic) | users=4, posts=84, comments=354 — совпали | tequilex | первый прогон в plan-06 |
