@@ -4,6 +4,9 @@ import { content } from "@theme/content";
 import { siteConfig } from "@/lib/site-config";
 import { PostList } from "@/components/feed/PostList";
 import { getTagBySlug, getTagFeedPage } from "@/server/feed";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { getEnv } from "@/lib/env";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -34,8 +37,17 @@ export default async function TagPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  const siteUrl = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+
   return (
     <>
+      <JsonLd
+        data={buildBreadcrumbJsonLd([
+          { name: "Главная", url: `${siteUrl}/` },
+          { name: "Темы", url: `${siteUrl}/tags` },
+          { name: tag.name, url: `${siteUrl}/t/${tag.slug}` },
+        ])}
+      />
       <header className="mb-6 pb-4 border-b border-border">
         <h1 className="text-3xl font-bold mb-1">#{tag.name}</h1>
         <p className="text-sm text-muted-foreground">{content.tags.postCount(totalCount)}</p>

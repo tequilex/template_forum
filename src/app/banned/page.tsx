@@ -3,7 +3,10 @@ import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { content } from "@theme/content";
 
-export const metadata = { title: "Доступ ограничен" };
+export const metadata = {
+  title: "Доступ ограничен",
+  robots: { index: false, follow: false },
+};
 
 export default async function BannedPage() {
   const session = await auth();

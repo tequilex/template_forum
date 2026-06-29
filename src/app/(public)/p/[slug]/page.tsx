@@ -10,6 +10,9 @@ import { PostTags } from "@/components/posts/PostTags";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { PostAdminMenu } from "@/components/moderation/PostAdminMenu";
 import { content } from "@theme/content";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { buildBlogPostingJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { getEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,7 @@ async function loadPost(slug: string) {
       coverUrl: posts.coverUrl,
       status: posts.status,
       pubAt: posts.pubAt,
+      updatedAt: posts.updatedAt,
       deletedAt: posts.deletedAt,
       hiddenByAdminAt: posts.hiddenByAdminAt,
       hiddenByAdminUsername: hiddenBy.username,
@@ -56,12 +60,31 @@ export async function generateMetadata({ params }: { params: Promise<Params> }) 
   if (post.deletedAt) return {};
   if (post.hiddenByAdminAt) return {};
   if (post.status === "draft") return {};
+
+  const siteUrl = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+  const ogImage = post.coverUrl ?? `${siteUrl}/og/${post.slug}`;
+  const url = `${siteUrl}/p/${post.slug}`;
+  const description = post.contentHtml
+    ? post.contentHtml.replace(/<[^>]*>/g, "").slice(0, 160)
+    : post.title;
+
   return {
     title: post.title,
-    description: post.title,
+    description,
+    alternates: { canonical: url },
     openGraph: {
+      type: "article",
+      url,
       title: post.title,
-      images: post.coverUrl ? [{ url: post.coverUrl }] : undefined,
+      description,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+      publishedTime: post.pubAt?.toISOString(),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -88,8 +111,32 @@ export default async function PostPage({
   const html = post.contentHtml ?? "";
   const postTagsList = await loadTags(post.id);
 
+  const siteUrl = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+
   return (
     <article>
+      <JsonLd
+        data={buildBlogPostingJsonLd({
+          post: {
+            slug: post.slug,
+            title: post.title,
+            excerpt: (post.contentHtml ?? "").replace(/<[^>]*>/g, "").slice(0, 200),
+            pubAt: post.pubAt,
+            updatedAt: post.updatedAt ?? post.pubAt,
+            coverUrl: post.coverUrl,
+            contentHtml: post.contentHtml ?? "",
+          },
+          author: { username: post.authorUsername, name: null },
+          tags: postTagsList.map((t) => ({ name: t.name })),
+          siteUrl,
+        })}
+      />
+      <JsonLd
+        data={buildBreadcrumbJsonLd([
+          { name: "Главная", url: `${siteUrl}/` },
+          { name: post.title, url: `${siteUrl}/p/${post.slug}` },
+        ])}
+      />
       <PostHero
         title={post.title}
         coverUrl={post.coverUrl}

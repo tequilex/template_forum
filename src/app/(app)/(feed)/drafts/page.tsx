@@ -7,6 +7,10 @@ import { DraftsList } from "@/components/posts/DraftsList";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 type SearchParams = { tab?: string };
 
 export default async function DraftsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

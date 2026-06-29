@@ -10,6 +10,9 @@ import {
   getUserProfile,
   getUserFeedPage,
 } from "@/server/feed";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { getEnv } from "@/lib/env";
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -50,9 +53,16 @@ export default async function UserProfilePage({ params, searchParams }: PageProp
   }
 
   const isOwner = session?.user?.id === user.id;
+  const siteUrl = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
 
   return (
     <>
+      <JsonLd
+        data={buildBreadcrumbJsonLd([
+          { name: "Главная", url: `${siteUrl}/` },
+          { name: `@${user.username}`, url: `${siteUrl}/u/${user.username}` },
+        ])}
+      />
       <UserProfileHeader
         userId={user.id}
         username={user.username}

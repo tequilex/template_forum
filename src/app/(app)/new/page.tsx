@@ -7,6 +7,10 @@ import { EditorClient } from "@/components/editor/EditorClient";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 type SearchParams = { id?: string };
 
 // /new?id={postId} — после первого save мы делаем history.replaceState
