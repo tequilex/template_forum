@@ -44,12 +44,12 @@ const fluentDelete = () => ({ where: vi.fn().mockResolvedValue(undefined) });
 const fluentSelectReturn = (rows: unknown[]) => {
   const whereResult: any = Promise.resolve(rows);
   whereResult.limit = () => Promise.resolve(rows);
-  return {
-    from: () => ({
-      where: () => whereResult,
-      orderBy: () => Promise.resolve(rows),
-    }),
+  const fromResult = {
+    where: () => whereResult,
+    orderBy: () => Promise.resolve(rows),
+    innerJoin: () => ({ where: () => whereResult }),
   };
+  return { from: () => fromResult };
 };
 
 describe("saveDraft", () => {
@@ -116,6 +116,9 @@ describe("publishPost", () => {
     }]));
     // tags exist check
     mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "TAGEXP" }]));
+    // post-transaction: author username + tag slugs (для IndexNow)
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ username: "alice" }]));
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ slug: "js" }]));
     const out = await publishPost("POST01", ["TAGEXP"]);
     expect(out.slug).toBe("hello-world");
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
@@ -165,6 +168,9 @@ describe("republishPost", () => {
       title: "Hello", slug: "hello",
       content: { blocks: [{ type: "paragraph", data: { text: "обновл" } }] },
     }]));
+    // post-transaction: author username + tag slugs (для IndexNow)
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ username: "alice" }]));
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ slug: "js" }]));
     mockDb.transaction.mockImplementation(async (cb: any) => {
       await cb({ update: () => fluentUpdate() });
     });
@@ -209,7 +215,7 @@ describe("unarchivePost", () => {
 
 describe("softDeletePost", () => {
   it("happy", async () => {
-    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "draft", deletedAt: null }]));
+    mockDb.select.mockReturnValueOnce(fluentSelectReturn([{ id: "POST01", status: "draft", deletedAt: null, slug: "hello" }]));
     mockDb.update.mockReturnValueOnce(fluentUpdate());
     await expect(softDeletePost("POST01")).resolves.toBeUndefined();
   });

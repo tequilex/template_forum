@@ -5,7 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { posts, postTags, tags, uploads } from "@db/schema";
+import { posts, postTags, tags, uploads, users } from "@db/schema";
 import { newId } from "@/lib/auth/id";
 import { requireOwnPost } from "@/lib/auth/guard";
 import { slugify, uniqueSlug } from "@/lib/slugify";
@@ -13,6 +13,8 @@ import { renderBlock } from "@/components/editor/renderBlock";
 import { sanitize } from "@/components/editor/sanitize";
 import { extractPlainText } from "@/components/editor/extractPlainText";
 import { extractCoverUrl } from "@/components/editor/extractCoverUrl";
+import { pingIndexNow, postUrlsForIndexNow } from "@/lib/indexnow";
+import { getEnv } from "@/lib/env";
 
 // Zod-схема Editor.js OutputData. Намеренно расслабленная (data: any) —
 // per-block-валидация живёт в renderBlock/extract*, которые graceful degrade.
@@ -155,6 +157,18 @@ export async function publishPost(
     }
   });
 
+  const [authorRow] = await db.select({ username: users.username })
+    .from(users).where(eq(users.id, post.authorId)).limit(1);
+  const tagSlugsList = await db.select({ slug: tags.slug })
+    .from(postTags).innerJoin(tags, eq(tags.id, postTags.tagId))
+    .where(eq(postTags.postId, postId));
+  void pingIndexNow(postUrlsForIndexNow({
+    siteUrl: getEnv().NEXTAUTH_URL,
+    postSlug: slug,
+    authorUsername: authorRow?.username ?? null,
+    tagSlugs: tagSlugsList.map((t) => t.slug),
+  }));
+
   return { slug };
 }
 
@@ -196,6 +210,18 @@ export async function republishPost(postId: string): Promise<void> {
         ));
     }
   });
+
+  const [authorRow] = await db.select({ username: users.username })
+    .from(users).where(eq(users.id, post.authorId)).limit(1);
+  const tagSlugsList = await db.select({ slug: tags.slug })
+    .from(postTags).innerJoin(tags, eq(tags.id, postTags.tagId))
+    .where(eq(postTags.postId, postId));
+  void pingIndexNow(postUrlsForIndexNow({
+    siteUrl: getEnv().NEXTAUTH_URL,
+    postSlug: post.slug,
+    authorUsername: authorRow?.username ?? null,
+    tagSlugs: tagSlugsList.map((t) => t.slug),
+  }));
 }
 
 export async function archivePost(postId: string): Promise<void> {
@@ -217,8 +243,11 @@ export async function unarchivePost(postId: string): Promise<void> {
 
 export async function softDeletePost(postId: string): Promise<void> {
   await requireSessionUserId();
-  await requireOwnPost(postId);                // фильтрует уже-deleted → notFound
+  const post = await requireOwnPost(postId);   // фильтрует уже-deleted → notFound
   // content_html НЕ зануляется — для возможного admin-restore в plan-05.
   await getDb().update(posts).set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(eq(posts.id, postId));
+
+  const base = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+  void pingIndexNow([`${base}/p/${post.slug}`]);
 }

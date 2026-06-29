@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import { comments, posts, users } from "@db/schema";
 import { assertAdmin } from "@/lib/auth/assert-admin";
+import { pingIndexNow } from "@/lib/indexnow";
+import { getEnv } from "@/lib/env";
+
+function indexNowPostUrl(slug: string): string {
+  const base = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+  return `${base}/p/${slug}`;
+}
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -50,6 +57,12 @@ export async function adminBanUser(userId: string, reason: string): Promise<Acti
   await getDb().update(users)
     .set({ bannedAt: new Date(), banReason: trimmed })
     .where(eq(users.id, userId));
+  const [u] = await getDb().select({ username: users.username })
+    .from(users).where(eq(users.id, userId)).limit(1);
+  if (u?.username) {
+    const base = getEnv().NEXTAUTH_URL.replace(/\/$/, "");
+    void pingIndexNow([`${base}/u/${u.username}`]);
+  }
   return { ok: true, data: undefined };
 }
 
@@ -67,7 +80,10 @@ export async function adminHidePost(postId: string): Promise<ActionResult> {
     .set({ hiddenByAdminAt: new Date(), hiddenByAdminId: userId })
     .where(eq(posts.id, postId));
   const slug = (await getDb().select({ slug: posts.slug }).from(posts).where(eq(posts.id, postId)))[0]?.slug;
-  if (slug) revalidatePath(`/p/${slug}`);
+  if (slug) {
+    revalidatePath(`/p/${slug}`);
+    void pingIndexNow([indexNowPostUrl(slug)]);
+  }
   revalidatePath("/");
   return { ok: true, data: undefined };
 }
@@ -85,9 +101,11 @@ export async function adminUnhidePost(postId: string): Promise<ActionResult> {
 
 export async function adminDeletePost(postId: string): Promise<ActionResult> {
   await assertAdmin();
+  const slug = (await getDb().select({ slug: posts.slug }).from(posts).where(eq(posts.id, postId)))[0]?.slug;
   await getDb().update(posts)
     .set({ deletedAt: new Date() })
     .where(eq(posts.id, postId));
+  if (slug) void pingIndexNow([indexNowPostUrl(slug)]);
   revalidatePath("/");
   return { ok: true, data: undefined };
 }
