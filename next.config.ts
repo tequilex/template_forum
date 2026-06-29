@@ -10,18 +10,18 @@ const oauthAvatarHosts: Pattern[] = [
   { protocol: "https", hostname: "*.vk.com" },
 ];
 
-const r2Public = process.env.R2_PUBLIC_BASE;
+const storagePublic = process.env.STORAGE_PUBLIC_BASE;
 const remotePatterns: Pattern[] = [...oauthAvatarHosts];
 
-if (r2Public) {
+if (storagePublic) {
   try {
-    const u = new URL(r2Public);
+    const u = new URL(storagePublic);
     remotePatterns.push({
       protocol: u.protocol.replace(":", "") as "https" | "http",
       hostname: u.hostname,
     });
   } catch {
-    // Игнорим невалидный R2_PUBLIC_BASE — getEnv() в рантайме поймает.
+    // Игнорим невалидный STORAGE_PUBLIC_BASE — getEnv() в рантайме поймает.
   }
 }
 

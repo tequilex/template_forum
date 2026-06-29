@@ -21,18 +21,18 @@ vi.mock("@aws-sdk/client-s3", async () => {
 const fix = (name: string) =>
   readFileSync(join(process.cwd(), "tests/fixtures/images", name));
 
-const baseR2Env = {
-  R2_ENDPOINT: "https://acc.r2.cloudflarestorage.com",
-  R2_BUCKET: "test-bucket",
-  R2_ACCESS_KEY_ID: "key",
-  R2_SECRET_ACCESS_KEY: "secret",
-  R2_PUBLIC_BASE: "https://images.example.ru",
+const baseStorageEnv = {
+  STORAGE_ENDPOINT: "https://s3.timeweb.cloud",
+  STORAGE_BUCKET: "test-bucket",
+  STORAGE_ACCESS_KEY_ID: "key",
+  STORAGE_SECRET_ACCESS_KEY: "secret",
+  STORAGE_PUBLIC_BASE: "https://images.example.ru",
 };
 
 const withEnv = <T>(extra: Record<string, string>, fn: () => Promise<T>): Promise<T> => {
   const snapshot = { ...process.env };
   // Гарантируем чистый env: удаляем всё лишнее, затем выставляем минимум.
-  // Без этого R2_*, попавшие через .env, утекают в кейс «503 when R2 env not configured».
+  // Без этого STORAGE_*, попавшие через .env, утекают в кейс «503 when storage env not configured».
   for (const k of Object.keys(process.env)) delete process.env[k];
   Object.assign(process.env, {
     DATABASE_URL: "postgres://app:pw@localhost:5432/app",
@@ -64,7 +64,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/upload", () => {
-  it("503 when R2 env not configured", async () => {
+  it("503 when storage env not configured", async () => {
     await withEnv({}, async () => {
       const { POST } = await import("@/app/api/upload/route");
       const res = await POST(makeReq(fix("small.jpg"), "x.jpg", "image/jpeg") as any);
@@ -76,7 +76,7 @@ describe("POST /api/upload", () => {
 
   it("401 when no session", async () => {
     authMock.mockResolvedValue(null);
-    await withEnv(baseR2Env, async () => {
+    await withEnv(baseStorageEnv, async () => {
       const { POST } = await import("@/app/api/upload/route");
       const res = await POST(makeReq(fix("small.jpg"), "x.jpg", "image/jpeg") as any);
       expect(res.status).toBe(401);
@@ -85,7 +85,7 @@ describe("POST /api/upload", () => {
 
   it("415 for txt file (magic bytes fail)", async () => {
     authMock.mockResolvedValue({ user: { id: "01HQUSER" } });
-    await withEnv(baseR2Env, async () => {
+    await withEnv(baseStorageEnv, async () => {
       const { POST } = await import("@/app/api/upload/route");
       const res = await POST(makeReq(fix("not-an-image.txt"), "x.txt", "image/jpeg") as any);
       expect(res.status).toBe(415);
@@ -95,16 +95,16 @@ describe("POST /api/upload", () => {
   it("413 for oversized buffer", async () => {
     authMock.mockResolvedValue({ user: { id: "01HQUSER" } });
     const huge = Buffer.alloc(11 * 1024 * 1024, 0xff);
-    await withEnv(baseR2Env, async () => {
+    await withEnv(baseStorageEnv, async () => {
       const { POST } = await import("@/app/api/upload/route");
       const res = await POST(makeReq(huge, "huge.bin", "image/jpeg") as any);
       expect(res.status).toBe(413);
     });
   });
 
-  it("200 for valid jpeg — calls R2 put + DB insert + returns Editor.js shape", async () => {
+  it("200 for valid jpeg — calls storage put + DB insert + returns Editor.js shape", async () => {
     authMock.mockResolvedValue({ user: { id: "01HQUSER" } });
-    await withEnv(baseR2Env, async () => {
+    await withEnv(baseStorageEnv, async () => {
       const { POST } = await import("@/app/api/upload/route");
       const res = await POST(makeReq(fix("small.jpg"), "x.jpg", "image/jpeg") as any);
       expect(res.status).toBe(200);

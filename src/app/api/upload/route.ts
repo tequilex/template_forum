@@ -19,7 +19,7 @@ function errJson(status: number, error: string) {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const env = getEnv();
-  if (!env.R2_ENDPOINT) return errJson(503, "storage_not_configured");
+  if (!env.STORAGE_ENDPOINT) return errJson(503, "storage_not_configured");
 
   const session = await auth();
   if (!session?.user?.id) return errJson(401, "unauthorized");

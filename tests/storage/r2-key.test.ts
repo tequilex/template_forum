@@ -28,26 +28,26 @@ describe("buildKey", () => {
 describe("buildPublicUrl", () => {
   beforeEach(() => _resetEnvCacheForTests());
 
-  it("concatenates R2_PUBLIC_BASE + / + key", () => {
+  it("concatenates STORAGE_PUBLIC_BASE + / + key", () => {
     withEnv({
-      R2_ENDPOINT: "https://acc.r2.cloudflarestorage.com",
-      R2_BUCKET: "b",
-      R2_ACCESS_KEY_ID: "k",
-      R2_SECRET_ACCESS_KEY: "s",
-      R2_PUBLIC_BASE: "https://images.example.ru",
+      STORAGE_ENDPOINT: "https://s3.timeweb.cloud",
+      STORAGE_BUCKET: "b",
+      STORAGE_ACCESS_KEY_ID: "k",
+      STORAGE_SECRET_ACCESS_KEY: "s",
+      STORAGE_PUBLIC_BASE: "https://images.example.ru",
     }, () => {
       expect(buildPublicUrl("uploads/u/x.webp"))
         .toBe("https://images.example.ru/uploads/u/x.webp");
     });
   });
 
-  it("trims trailing slash from R2_PUBLIC_BASE", () => {
+  it("trims trailing slash from STORAGE_PUBLIC_BASE", () => {
     withEnv({
-      R2_ENDPOINT: "https://acc.r2.cloudflarestorage.com",
-      R2_BUCKET: "b",
-      R2_ACCESS_KEY_ID: "k",
-      R2_SECRET_ACCESS_KEY: "s",
-      R2_PUBLIC_BASE: "https://images.example.ru/",
+      STORAGE_ENDPOINT: "https://s3.timeweb.cloud",
+      STORAGE_BUCKET: "b",
+      STORAGE_ACCESS_KEY_ID: "k",
+      STORAGE_SECRET_ACCESS_KEY: "s",
+      STORAGE_PUBLIC_BASE: "https://images.example.ru/",
     }, () => {
       expect(buildPublicUrl("uploads/u/x.webp"))
         .toBe("https://images.example.ru/uploads/u/x.webp");

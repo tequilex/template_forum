@@ -8,16 +8,28 @@ const schema = z.object({
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(32, "NEXTAUTH_SECRET must be ≥32 chars"),
 
+  // Production-only (валидируется в superRefine ниже)
+  DOMAIN: z.string().min(1).optional(),
+  LETSENCRYPT_EMAIL: z.string().email().optional(),
+
   YANDEX_CLIENT_ID: z.string().min(1).optional(),
   YANDEX_CLIENT_SECRET: z.string().min(1).optional(),
   VK_CLIENT_ID: z.string().min(1).optional(),
   VK_CLIENT_SECRET: z.string().min(1).optional(),
 
-  R2_ENDPOINT:          z.string().url().optional(),
-  R2_BUCKET:            z.string().min(1).optional(),
-  R2_ACCESS_KEY_ID:     z.string().min(1).optional(),
-  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-  R2_PUBLIC_BASE:       z.string().url().optional(),
+  STORAGE_ENDPOINT:          z.string().url().optional(),
+  STORAGE_BUCKET:            z.string().min(1).optional(),
+  STORAGE_ACCESS_KEY_ID:     z.string().min(1).optional(),
+  STORAGE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  STORAGE_PUBLIC_BASE:       z.string().url().optional(),
+
+  BACKUP_S3_ENDPOINT:          z.string().url().optional(),
+  BACKUP_S3_BUCKET:            z.string().min(1).optional(),
+  BACKUP_S3_ACCESS_KEY_ID:     z.string().min(1).optional(),
+  BACKUP_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+
+  INDEXNOW_KEY: z.string().regex(/^[a-f0-9]{8,128}$/, "INDEXNOW_KEY must be hex").optional(),
+  YANDEX_METRIKA_ID: z.string().regex(/^\d+$/, "YANDEX_METRIKA_ID must be digits").optional(),
 }).superRefine((v, ctx) => {
   for (const p of ["YANDEX", "VK"] as const) {
     const id = (v as Record<string, string | undefined>)[`${p}_CLIENT_ID`];
@@ -31,19 +43,54 @@ const schema = z.object({
     }
   }
 
-  const r2Keys = [
-    "R2_ENDPOINT", "R2_BUCKET", "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY", "R2_PUBLIC_BASE",
+  const storageKeys = [
+    "STORAGE_ENDPOINT", "STORAGE_BUCKET", "STORAGE_ACCESS_KEY_ID",
+    "STORAGE_SECRET_ACCESS_KEY", "STORAGE_PUBLIC_BASE",
   ] as const;
-  const r2Presence = r2Keys.map(k => Boolean((v as Record<string, string | undefined>)[k]));
-  const r2All = r2Presence.every(Boolean);
-  const r2None = r2Presence.every(p => !p);
-  if (!r2All && !r2None) {
+  const storagePresence = storageKeys.map(k => Boolean((v as Record<string, string | undefined>)[k]));
+  const storageAll = storagePresence.every(Boolean);
+  const storageNone = storagePresence.every(p => !p);
+  if (!storageAll && !storageNone) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["R2_BUCKET"],
-      message: "R2_* env vars must be all set or all empty",
+      path: ["STORAGE_BUCKET"],
+      message: "STORAGE_* env vars must be all set or all empty",
     });
+  }
+
+  const backupKeys = [
+    "BACKUP_S3_ENDPOINT", "BACKUP_S3_BUCKET",
+    "BACKUP_S3_ACCESS_KEY_ID", "BACKUP_S3_SECRET_ACCESS_KEY",
+  ] as const;
+  const backupPresence = backupKeys.map(k => Boolean((v as Record<string, string | undefined>)[k]));
+  const backupAll = backupPresence.every(Boolean);
+  const backupNone = backupPresence.every(p => !p);
+  if (!backupAll && !backupNone) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["BACKUP_S3_BUCKET"],
+      message: "BACKUP_S3_* env vars must be all set or all empty",
+    });
+  }
+
+  if (v.NODE_ENV === "production") {
+    const required: Array<keyof typeof v> = ["DOMAIN", "LETSENCRYPT_EMAIL"];
+    for (const k of required) {
+      if (!v[k]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [k as string],
+          message: `${String(k)} is required in production`,
+        });
+      }
+    }
+    if (!storageAll) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STORAGE_BUCKET"],
+        message: "STORAGE_* must be fully configured in production",
+      });
+    }
   }
 });
 

@@ -8,8 +8,8 @@ export function buildKey(userId: string, ulid: string): string {
 
 export function buildPublicUrl(key: string): string {
   const env = getEnv();
-  if (!env.R2_PUBLIC_BASE) throw new Error("R2_PUBLIC_BASE not set");
-  const base = env.R2_PUBLIC_BASE.replace(/\/$/, "");
+  if (!env.STORAGE_PUBLIC_BASE) throw new Error("STORAGE_PUBLIC_BASE not set");
+  const base = env.STORAGE_PUBLIC_BASE.replace(/\/$/, "");
   return `${base}/${key}`;
 }
 
