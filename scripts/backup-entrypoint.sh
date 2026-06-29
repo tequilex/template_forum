@@ -5,7 +5,7 @@ apk add --no-cache aws-cli coreutils tzdata
 export TZ=Europe/Moscow
 export AWS_ACCESS_KEY_ID="${BACKUP_S3_ACCESS_KEY_ID}"
 export AWS_SECRET_ACCESS_KEY="${BACKUP_S3_SECRET_ACCESS_KEY}"
-export AWS_DEFAULT_REGION=ru-central1
+export AWS_DEFAULT_REGION=ru-1
 
 while true; do
   NEXT=$(date -d "today 03:00" +%s)
