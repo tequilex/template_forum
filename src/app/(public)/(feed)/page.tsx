@@ -19,7 +19,6 @@ interface PageProps {
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
-  console.log("pipiska");
   const sp = await searchParams;
   const page = Number(sp.page ?? "1") || 1;
 
