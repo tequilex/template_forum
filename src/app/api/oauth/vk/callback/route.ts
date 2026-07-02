@@ -20,8 +20,8 @@ function safeCallback(input: string | null): string {
   return input;
 }
 
-function fail(req: NextRequest, code: string): NextResponse {
-  const url = new URL("/login", req.url);
+function fail(_req: NextRequest, code: string): NextResponse {
+  const url = new URL("/login", getEnv().NEXTAUTH_URL);
   url.searchParams.set("error", code);
   const res = NextResponse.redirect(url);
   res.cookies.delete(COOKIE_VERIFIER);
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     return fail(req, "vk_db_failed");
   }
 
-  const res = NextResponse.redirect(new URL(callbackUrl, req.url));
+  const res = NextResponse.redirect(new URL(callbackUrl, env.NEXTAUTH_URL));
   res.cookies.delete(COOKIE_VERIFIER);
   res.cookies.delete(COOKIE_STATE);
   res.cookies.delete(COOKIE_CALLBACK);

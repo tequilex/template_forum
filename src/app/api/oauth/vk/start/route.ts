@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export function GET(req: NextRequest) {
   const env = getEnv();
   if (!env.VK_CLIENT_ID || !env.VK_CLIENT_SECRET) {
-    return NextResponse.redirect(new URL("/login?error=vk_disabled", req.url));
+    return NextResponse.redirect(new URL("/login?error=vk_disabled", env.NEXTAUTH_URL));
   }
 
   const subRaw = req.nextUrl.searchParams.get("provider");
