@@ -12,6 +12,9 @@ RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# next.config.ts bakes this host into images.remotePatterns at build time.
+ARG STORAGE_PUBLIC_BASE
+ENV STORAGE_PUBLIC_BASE=$STORAGE_PUBLIC_BASE
 RUN pnpm build
 RUN pnpm exec esbuild scripts/migrate.ts \
     --bundle --platform=node --target=node20 \
@@ -22,6 +25,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Next standalone binds to $HOSTNAME; Docker sets it to the container ID,
+# which breaks the localhost healthcheck. Bind to all interfaces instead.
+ENV HOSTNAME=0.0.0.0
 RUN addgroup -g 1001 -S app && adduser -u 1001 -S app -G app
 COPY --from=builder --chown=app:app /app/.next/standalone ./
 COPY --from=builder --chown=app:app /app/.next/static ./.next/static

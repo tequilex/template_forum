@@ -13,7 +13,10 @@ services:
     depends_on: [app]
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        STORAGE_PUBLIC_BASE: ${STORAGE_PUBLIC_BASE}
     restart: unless-stopped
     env_file: .env
     environment:
