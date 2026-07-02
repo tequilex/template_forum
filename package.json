@@ -12,9 +12,9 @@
     "test:watch": "vitest",
     "check-theme": "tsx scripts/check-theme.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "cleanup:orphans": "tsx scripts/cleanup-orphan-uploads.ts"
+    "cleanup:orphans": "tsx --env-file=.env scripts/cleanup-orphan-uploads.ts"
   },
   "dependencies": {
     "@auth/core": "0.41.2",
