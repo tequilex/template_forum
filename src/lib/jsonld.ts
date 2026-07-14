@@ -71,7 +71,7 @@ export function buildWebSiteJsonLd(siteUrl: string): JsonLd {
     "@context": "https://schema.org",
     "@type": "WebSite",
     url: base,
-    name: "Skelet",
+    name: "foxgeek",
     inLanguage: "ru-RU",
   };
 }

@@ -50,7 +50,7 @@ export async function GET(
           color: "white",
         }}
       >
-        <div style={{ fontSize: 32, fontWeight: 700, opacity: 0.7 }}>Skelet</div>
+        <div style={{ fontSize: 32, fontWeight: 700, opacity: 0.7 }}>foxgeek</div>
         <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
           <div
             style={{

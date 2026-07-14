@@ -1,12 +1,12 @@
-# Skelet — переиспользуемый блог-скелет
+# foxgeek — блог-платформа
 
-Скелет для быстрого создания тематических блогов / форумов (стиль vc.ru / drive2.ru). Каждая ниша = отдельный git-репо + VPS.
+Переиспользуемый скелет для быстрого создания тематических блогов / форумов (стиль vc.ru / drive2.ru). Каждая ниша = отдельный git-репо + VPS. Текущий инстанс: **foxgeek.ru**.
 
 См. полную спеку: [docs/superpowers/specs/2026-06-05-skelet-blog-design.md](docs/superpowers/specs/2026-06-05-skelet-blog-design.md).
 
 ## Стек
 
-Next.js 15 · React 19 · TypeScript · Tailwind v3 · Drizzle ORM · Postgres 16 · Auth.js (план 2) · Editor.js (план 3) · Cloudflare R2 (план 3) · Caddy 2 · Docker.
+Next.js 15 · React 19 · TypeScript · Tailwind v3 · Drizzle ORM · Postgres 16 · Auth.js · Editor.js · Timeweb S3 · Caddy 2 · Docker.
 
 ## Быстрый старт (локальная разработка)
 
@@ -52,7 +52,7 @@ pnpm dev
 | `pnpm db:generate` | Drizzle: генерация миграции из schema.ts |
 | `pnpm db:migrate` | Drizzle: применить миграции |
 | `pnpm db:studio` | Drizzle Studio (GUI для БД) |
-| `pnpm cleanup:orphans [--dry-run]` | Удалить uploads без `post_id`, старше 7 дней (R2 + DB) |
+| `pnpm cleanup:orphans [--dry-run]` | Удалить uploads без `post_id`, старше 7 дней (S3 + DB) |
 
 ## Маршруты (plan-04)
 
@@ -129,7 +129,7 @@ CLI-визард для форка: `pnpm new-niche` (план 6).
 
 ## Деплой
 
-Skelet деплоится на Timeweb Cloud VPS через docker-compose (caddy + app + db + backup). HTTPS — автоматически через Caddy + Let's Encrypt.
+foxgeek деплоится на Timeweb Cloud VPS через docker-compose (caddy + app + db + backup). HTTPS — автоматически через Caddy + Let's Encrypt.
 
 Подробности: [docs/DEPLOY.md](./docs/DEPLOY.md). Восстановление из бэкапа: [docs/RECOVERY.md](./docs/RECOVERY.md).
 
@@ -151,17 +151,13 @@ Skelet деплоится на Timeweb Cloud VPS через docker-compose (cadd
 - `/api/health` — `SELECT 1` к Postgres, 200/503.
 - UptimeRobot пингует `/api/health` каждые 5 минут, алёрты в Telegram (см. `docs/DEPLOY.md` §8.5).
 
-## sharp на Linux x64 (Hetzner)
+## sharp / libvips
 
-При прод-сборке на Linux x64 Hetzner-машине `pnpm install` подтягивает `@img/sharp-linux-x64`
-автоматически. Если в Docker-образе используется multi-platform build и кто-то соберёт
-на M-серии Mac под `--platform linux/amd64`, может потребоваться:
+Два инварианта, проверенные пилотным деплоем (иначе `ERR_DLOPEN_FAILED` в standalone на Alpine):
 
-```bash
-pnpm install --config.platform=linux --config.arch=x64
-```
+1. Версия `sharp` в package.json должна совпадать по minor с той, которую Next.js несёт
+   как optional dependency (`pnpm why sharp` — не должно быть двух версий).
+2. `.npmrc` в корне (`node-linker=hoisted` + `supported-architectures`) — не удалять,
+   он копируется в Docker-билд.
 
-Или установка переменной `SHARP_IGNORE_GLOBAL_LIBVIPS=1` перед `pnpm install`,
-если на хост-системе живёт несовместимая глобальная libvips.
-
-Подробности — `node_modules/sharp/install/check.js` после `pnpm install`.
+Детали: `docs/DEPLOY.md` §10 (troubleshooting).

@@ -1,287 +1,335 @@
-# Skelet — Deployment Guide
+# foxgeek — Deployment Guide
 
 > Целевая платформа: **Timeweb Cloud VPS** 1×5GHz / 1GB / 15GB. Один сервер,
 > docker-compose (caddy + app + db + backup), Let's Encrypt автоматически.
+>
+> Гайд проверен пилотным деплоем (июль 2026, тогда домен был fuddly.ru).
+> Шаги идут в правильном порядке — SSH-ключ и DNS раньше всего, т.к. у них
+> внешние задержки. `example.ru` в примерах = твой домен (foxgeek.ru).
 
 ## 0. Pre-deploy smoke (на локальной машине)
 
 Перед первым деплоем и перед каждым релизом:
 
-1. `pnpm test` — зелёно
-2. `pnpm tsc --noEmit` — зелёно
-3. `pnpm build` — production-сборка локально прошла
-4. `docker compose build app` — Docker-сборка локально проходит
-5. (Опционально) Создать `.env.prod-test` с реальными prod-кредами Timeweb S3 + локальной БД, запустить `docker compose --env-file .env.prod-test up -d` и проверить:
-   - `/` открывается, видны посты
-   - `/p/[slug]` → JSON-LD в DOM, OG-meta в head
-   - Upload через `/new` идёт в Timeweb
-   - `/sitemap.xml`, `/robots.txt`, `/api/health`, `/og/[slug]`, `/privacy` отвечают корректно
-   - Метрика в DOM (если `YANDEX_METRIKA_ID` указан и `NODE_ENV=production`)
+1. `pnpm test` — зелёно (нужен локальный Postgres: `docker compose up -d db`)
+2. `pnpm exec tsc --noEmit` — зелёно
+3. `docker compose build app` — Docker-сборка локально проходит
 
 Только после зелёного — деплой.
 
-## 1. Создаём VPS на Timeweb
+## 1. SSH-ключ (до создания VPS)
 
-1. timeweb.cloud → Cloud Servers → Create
-2. Образ: Ubuntu 22.04 LTS / 24.04 LTS
+Timeweb привязывает ключ на этапе создания сервера, поэтому сначала ключ:
+
+```bash
+# Если ключа ещё нет:
+ssh-keygen -t ed25519 -C "foxgeek-vps" -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub
+```
+
+timeweb.cloud → Профиль → SSH-ключи → Добавить → вставить `.pub` целиком.
+
+## 2. Создаём VPS на Timeweb
+
+1. timeweb.cloud → Облачные серверы → Создать
+2. Образ: **Ubuntu 24.04 LTS**
 3. Тариф: **1×5GHz / 1GB / 15GB / 200 Мбит** (825 ₽/мес)
-4. Сеть: IPv4 (+ 180 ₽/мес) + IPv6, **без приватной сети**
-5. SSH-ключ: загрузить свой публичный ключ заранее (Profile → SSH keys)
-6. Нажать Create. Через ~60 секунд VPS готов; запиши публичный IPv4.
+4. Сеть: IPv4 (+180 ₽/мес) + IPv6, **без приватной сети**
+5. SSH-ключ: выбрать загруженный
+6. Создать. Через ~60 секунд VPS готов; записать публичный IPv4.
 
-## 2. DNS
+## 3. DNS (сразу после создания VPS — пропагация идёт параллельно)
 
-У регистратора домена создать:
+Если домен тоже на Timeweb — в том же кабинете, DNS-записи домена.
+Существующие MX/TXT (почта) не трогать. Добавить:
 
-- A-запись `example.ru` → `<IPv4>`
-- A-запись `www.example.ru` → `<IPv4>`
-- (опц.) AAAA-записи на IPv6
+- A-запись `@` (корень) → `<IPv4>`
+- A-запись `www` → `<IPv4>`
 
-TTL — оставить дефолтным. DNS пропагируется 5–60 минут; проверка:
+Проверка с локальной машины (Timeweb пропагирует за 5–15 минут):
+
 ```bash
-dig +short example.ru
+dig +short example.ru @1.1.1.1 && dig +short www.example.ru @1.1.1.1
+# Оба должны вернуть <IPv4>
 ```
 
-## 3. Первый вход на VPS
+## 4. Базовая настройка сервера
+
+Подключение: `ssh root@<IP>` (или Termius: Keychain → импорт приватного
+ключа, Host → address/root/ключ).
+
+### 4.1. Обновление, timezone, swap (обязательно!)
+
+Без swap `next build` на 1GB RAM падает в OOM — это не опция, а обязательный шаг:
 
 ```bash
-ssh root@<IP>
-```
-
-### 3.1. Базовая настройка
-
-```bash
-# Обновить пакеты
 apt update && apt upgrade -y
+timedatectl set-timezone Europe/Moscow
 
-# Создать non-root юзера
-adduser skelet
-usermod -aG sudo skelet
-mkdir -p /home/skelet/.ssh
-cp /root/.ssh/authorized_keys /home/skelet/.ssh/
-chown -R skelet:skelet /home/skelet/.ssh
-chmod 700 /home/skelet/.ssh
-chmod 600 /home/skelet/.ssh/authorized_keys
-
-# Запретить root-вход и пароли (по желанию, после проверки что skelet логинится)
-# Редактировать /etc/ssh/sshd_config:
-#   PermitRootLogin no
-#   PasswordAuthentication no
-# systemctl reload ssh
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+free -h   # Swap: 2.0Gi
 ```
 
-### 3.2. Установить Docker + compose plugin
+### 4.2. Firewall + fail2ban
 
 ```bash
-curl -fsSL https://get.docker.com | sh
-usermod -aG docker skelet
-# logout / login заново
+apt install -y ufw fail2ban
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow OpenSSH
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+systemctl enable --now fail2ban
 ```
 
-Проверка:
-```bash
-docker version
-docker compose version
-```
+### 4.3. Docker + compose plugin (официальный репозиторий)
 
-### 3.3. Firewall (по желанию — UFW)
-
-```bash
-sudo apt install ufw
-sudo ufw allow OpenSSH
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw enable
-```
-
-## 4. Деплой кода
+В Ubuntu-репо устаревший docker.io без compose v2 — ставим из docker.com:
 
 ```bash
-ssh skelet@<IP>
-git clone https://github.com/<you>/skelet.git
-cd skelet
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+docker --version && docker compose version
 ```
 
-Создать `.env` на VPS (НЕ коммитим в git):
+### 4.4. Reboot (загрузить обновлённое ядро)
 
 ```bash
-nano .env
+reboot
+# Через ~60 сек переподключиться, проверить:
+uname -r && docker ps && free -h
 ```
 
-Заполнить по `.env.example`. Сгенерировать секреты заранее на локалке:
+## 5. S3-buckets в Timeweb
+
+Реальные параметры Timeweb S3 (проверено пилотом):
+
+- Endpoint: `https://s3.twcstorage.ru` (общий для standard и cold)
+- Регион: `ru-1`
+- Имя бакета — UUID, генерируется Timeweb (не выбирается)
+- Публичный URL — **path-style**: `https://s3.twcstorage.ru/<bucket-uuid>`
+
+### 5.1. Бакет для картинок (Standard)
+
+1. Timeweb → S3-хранилище → Создать → тип **Standard**, публичное чтение: да
+2. Доступы → создать service-пользователя → записать access/secret
+3. В `.env`:
+   - `STORAGE_ENDPOINT=https://s3.twcstorage.ru`
+   - `STORAGE_BUCKET=<bucket-uuid>`
+   - `STORAGE_PUBLIC_BASE=https://s3.twcstorage.ru/<bucket-uuid>`
+
+### 5.2. Бакет для бэкапов (Cold)
+
+1. Создать → тип **Cold**
+2. Lifecycle: удаление объектов старше 30 дней (если доступно в тарифе)
+3. В `.env`: `BACKUP_S3_*` (endpoint тот же, bucket — UUID cold-бакета)
+
+## 6. OAuth-приложения
+
+Redirect URI **разные по механике** — Яндекс идёт через next-auth,
+VK — через собственный PKCE-роут:
+
+- Яндекс (oauth.yandex.ru): `https://example.ru/api/auth/callback/yandex`
+- VK ID (id.vk.com): `https://example.ru/api/oauth/vk/callback` ← **не** `/api/auth/callback/vk`!
+
+К существующему приложению можно просто добавить prod-URI рядом с
+localhost-URI — отдельное приложение не обязательно. Изменения применяются
+сразу, перезапуск не нужен.
+
+## 7. Деплой кода
 
 ```bash
-openssl rand -base64 32   # NEXTAUTH_SECRET
-openssl rand -base64 24   # DB_PASSWORD
-openssl rand -hex 16      # INDEXNOW_KEY
+cd /opt
+git clone https://github.com/<you>/foxgeek.git foxgeek   # имя папки любое
+cd foxgeek
 ```
 
-`DOMAIN=example.ru`, `LETSENCRYPT_EMAIL=<твой email>`, `NEXTAUTH_URL=https://example.ru`,
-`STORAGE_ENDPOINT=https://s3.timeweb.cloud`, `STORAGE_BUCKET=skelet-images`, ...
+### 7.1. Прод `.env`
 
-## 5. Создать S3-buckets в Timeweb
-
-### 5.1. `skelet-images` (Standard)
-
-1. Timeweb → S3 Storage → Create bucket
-2. Name: `skelet-images`, Type: Standard, Public read: yes
-3. CORS — разрешить `PUT` от `https://example.ru`:
-   ```json
-   [{
-     "AllowedOrigins": ["https://example.ru"],
-     "AllowedMethods": ["PUT", "GET", "HEAD"],
-     "AllowedHeaders": ["*"],
-     "MaxAgeSeconds": 3600
-   }]
-   ```
-4. Service users → Create → права на bucket → запиши access/secret в `.env`
-   (`STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`)
-5. `STORAGE_PUBLIC_BASE=https://skelet-images.s3.timeweb.cloud`
-
-### 5.2. `skelet-backups` (Cold)
-
-1. Create bucket → name: `skelet-backups`, Type: **Cold**
-2. Lifecycle policy: delete objects older than **30 days**
-3. Service users → отдельный (минимальные права: только `s3:PutObject` на этот bucket)
-4. Запиши access/secret в `.env` (`BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY`)
-
-## 6. Создать OAuth-приложения (prod)
-
-Для каждого провайдера (Yandex, VK) создать prod-приложение с redirect URI:
-- `https://example.ru/api/auth/callback/yandex`
-- `https://example.ru/api/auth/callback/vk`
-
-Записать `CLIENT_ID` / `CLIENT_SECRET` в `.env`.
-
-## 7. Запуск
+Секреты сгенерировать на локалке:
 
 ```bash
-docker compose up -d
-docker compose ps
-docker compose logs -f caddy   # увидеть процесс получения сертификата
+openssl rand -base64 32                          # NEXTAUTH_SECRET
+openssl rand -base64 24 | tr -d '/+=' | head -c 32   # DB_PASSWORD (без спецсимволов — попадает в URL)
+openssl rand -hex 16                             # INDEXNOW_KEY
 ```
 
-Сертификат получается автоматически ~30–60 секунд после первого запроса. Если в логах
-`acme: error...` — проверь:
-- DNS уже указывает на VPS (`dig +short example.ru`)
-- 80/443 открыты на firewall'е (`curl -I http://example.ru` снаружи)
+Шаблон рабочего прод `.env` (все переменные обязательны, кроме помеченных):
 
-Применить миграции БД:
 ```bash
-docker compose exec app pnpm db:migrate
+NODE_ENV=production
+
+DOMAIN=example.ru
+LETSENCRYPT_EMAIL=you@example.com
+NEXTAUTH_URL=https://example.ru
+NEXTAUTH_SECRET=<openssl rand -base64 32>
+# Обязательно за reverse-proxy: без этого Auth.js режет все /api/auth/* (UntrustedHost)
+AUTH_TRUST_HOST=true
+
+DB_PASSWORD=<пароль>
+# Хост db — имя сервиса в docker-compose, не localhost!
+DATABASE_URL=postgres://app:<пароль>@db:5432/app
+
+YANDEX_CLIENT_ID=...
+YANDEX_CLIENT_SECRET=...
+VK_CLIENT_ID=...
+VK_CLIENT_SECRET=...
+
+STORAGE_ENDPOINT=https://s3.twcstorage.ru
+STORAGE_BUCKET=<bucket-uuid>
+STORAGE_ACCESS_KEY_ID=...
+STORAGE_SECRET_ACCESS_KEY=...
+STORAGE_PUBLIC_BASE=https://s3.twcstorage.ru/<bucket-uuid>
+
+BACKUP_S3_ENDPOINT=https://s3.twcstorage.ru
+BACKUP_S3_BUCKET=<cold-bucket-uuid>
+BACKUP_S3_ACCESS_KEY_ID=...
+BACKUP_S3_SECRET_ACCESS_KEY=...
+
+INDEXNOW_KEY=<openssl rand -hex 16>
+YANDEX_METRIKA_ID=          # опционально, пусто = метрика выключена
 ```
 
-(или они применяются автоматически — зависит от Dockerfile entrypoint; см. `scripts/entrypoint.sh`).
+```bash
+chmod 600 .env
+```
 
-Открыть `https://example.ru` — должен открыться сайт.
+> `STORAGE_PUBLIC_BASE` используется дважды: в рантайме (ссылки на картинки)
+> и **на этапе сборки** (allow-list хостов next/image). docker-compose
+> прокидывает его в билд как build arg автоматически — просто заполни `.env`
+> до первого `docker compose build`.
+
+### 7.2. Первый запуск
+
+```bash
+docker compose up -d --build
+```
+
+Первый билд на 1GB VPS — 10–15 минут. Дальше по кешу быстрее (~3–5 мин).
+
+Миграции БД применяются **автоматически** при старте app-контейнера
+(`scripts/entrypoint.sh`: сначала `node migrate.cjs`, потом `node server.js`).
+Запускать вручную ничего не нужно. В runner-образе нет pnpm/tsx —
+`docker compose exec app pnpm ...` не сработает.
+
+### 7.3. Проверки
+
+```bash
+docker compose ps        # все 4 сервиса Up, app и db — (healthy)
+docker compose logs app --tail=20    # "Migrations applied" + "Ready in ..."
+docker compose logs caddy | grep -i "certificate obtained"
+# Ожидаемо две строки: для example.ru и www.example.ru (~30–60 сек после старта)
+```
+
+С локальной машины:
+
+```bash
+curl -I https://example.ru
+# HTTP/2 200 + strict-transport-security + x-frame-options: DENY
+```
+
+В браузере (**в инкогнито** — обычная вкладка может держать кеш от локального
+dev-стека и сыпать "Failed to find Server Action"):
+
+- `/` открывается, обложки постов грузятся (это проверяет next/image + S3)
+- Логин через Яндекс и VK проходит и возвращает на сайт
+- Создание поста с картинкой — файл появляется в бакете
 
 ## 8. Post-deploy ручные шаги
 
 ### 8.1. IndexNow verification file
 
-На VPS:
 ```bash
-cd skelet
-echo "$INDEXNOW_KEY" > "public/${INDEXNOW_KEY}.txt"
-git add "public/${INDEXNOW_KEY}.txt"
-git commit -m "chore: add IndexNow verification file"
-# Перезапустить app, чтобы файл попал в next-сборку
+cd /opt/foxgeek
+echo "<INDEXNOW_KEY>" > "public/<INDEXNOW_KEY>.txt"
 docker compose up -d --build app
+curl https://example.ru/<INDEXNOW_KEY>.txt   # вернёт ключ
 ```
 
-Проверить:
-```bash
-curl https://example.ru/${INDEXNOW_KEY}.txt
-# Ожидание: значение того же ключа
-```
+(Файл коммитится в репо с локалки, на VPS только `git pull` — VPS-копия
+репозитория read-only по договорённости.)
 
 ### 8.2. Yandex.Metrika
 
-1. metrica.yandex.ru → создать счётчик
-2. Записать ID в `.env` (`YANDEX_METRIKA_ID=...`)
-3. `docker compose up -d --build app`
-4. В DevTools Network на любой странице должен загружаться `mc.yandex.ru/metrika/tag.js`
+1. metrica.yandex.ru → создать счётчик → ID в `.env` (`YANDEX_METRIKA_ID=`)
+2. `docker compose up -d --force-recreate app` (пересоздание, не restart!)
+3. Network в DevTools: грузится `mc.yandex.ru/metrika/tag.js`
 
-### 8.3. Yandex Webmaster
+### 8.3. Yandex Webmaster / Google Search Console
 
-1. webmaster.yandex.ru → Add site → `example.ru`
-2. Verify: метод HTML-file → дают файл `yandex_<hash>.html` → положить в `public/` → redeploy
-3. Submit sitemap: `https://example.ru/sitemap.xml`
+1. Верификация HTML-файлом → файл в `public/` → redeploy
+2. Submit sitemap: `https://example.ru/sitemap.xml`
 
-### 8.4. Google Search Console
+### 8.4. UptimeRobot + Telegram
 
-1. search.google.com/search-console → Add property → URL prefix → `https://example.ru`
-2. Verify: метод HTML-file → положить файл в `public/` → redeploy
-3. Submit sitemap: `https://example.ru/sitemap.xml`
-
-### 8.5. UptimeRobot + Telegram
-
-1. uptimerobot.com → регистрация (free)
-2. Telegram: `/newbot` у @BotFather → имя `skelet_status_bot` → токен
-3. У `@userinfobot` `/start` → твой `chat_id`
-4. UptimeRobot → My Settings → Add Alert Contact → **Webhook**
-   - Friendly name: `Telegram`
-   - URL: `https://api.telegram.org/bot<BOT_TOKEN>/sendMessage`
-   - POST body type: `JSON`
-   - POST value: `{"chat_id":"<CHAT_ID>","text":"*alertTypeFriendlyName* - *monitorFriendlyName* (*alertDetails*)"}`
-5. Add Monitor → HTTP(s)
-   - Friendly name: `skelet`
-   - URL: `https://example.ru/api/health`
-   - Monitoring interval: 5 min, Timeout: 30s
-   - Alert when: 2 consecutive failures
-   - Alert Contacts: только что созданный Webhook
-6. Test alert: pause monitor → ждать 5 минут → должен прилететь в Telegram.
+1. uptimerobot.com (free) → Add Monitor → HTTP(s) → `https://example.ru/api/health`,
+   interval 5 min, alert after 2 failures
+2. Telegram-алерт: бот у @BotFather → Alert Contact типа Webhook →
+   URL `https://api.telegram.org/bot<TOKEN>/sendMessage`, POST JSON:
+   `{"chat_id":"<CHAT_ID>","text":"*alertTypeFriendlyName* - *monitorFriendlyName*"}`
 
 ## 9. Регулярные операции
 
 ### Обновление кода
 
 ```bash
-ssh skelet@<IP>
-cd skelet
+cd /opt/foxgeek
 git pull
-docker compose up -d --build app
-# Если изменялась схема:
-docker compose exec app pnpm db:migrate
+docker compose build app && docker compose up -d app
 ```
 
-### Просмотр логов
+Миграции применятся сами при старте контейнера.
+
+### Изменение `.env`
+
+`docker compose restart` **не перечитывает** env_file! Только пересоздание:
+
+```bash
+docker compose up -d --force-recreate app
+```
+
+Если менялся `STORAGE_PUBLIC_BASE` — нужен ещё и rebuild (он запечён в билд).
+
+### Логи
 
 ```bash
 docker compose logs -f --tail=200 app
 docker compose logs -f --tail=200 caddy
-docker compose logs -f --tail=200 backup
+docker compose logs backup --tail=50
 ```
 
-### Проверка бэкапов
+### Бэкапы
 
-В Timeweb S3 Cold кабинете → `skelet-backups/db/` → должен появляться новый файл каждое утро ~03:00 MSK.
+Ежедневно ~03:00 MSK в cold-бакет `db/backup-YYYY-MM-DD-HHMM.sql.gz`.
+Ручной прогон: `docker compose exec backup sh /backup.sh`.
+Восстановление: [`docs/RECOVERY.md`](./RECOVERY.md).
 
-## 10. Что делать при OOM на сборке
+## 10. Troubleshooting (реальные кейсы пилота)
 
-`pnpm build` на 1GB VPS может упасть в OOM. Добавить swap:
-
-```bash
-sudo fallocate -l 3G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-free -h
-```
-
-После этого `docker compose up -d --build app` должно проходить. Если и со swap не идёт — апгрейд тарифа Timeweb до 2GB.
-
-## 11. Troubleshooting
-
-| Симптом | Возможная причина | Действие |
+| Симптом | Причина | Действие |
 |---|---|---|
-| `acme: 404` в Caddy | DNS не указывает на VPS | `dig +short example.ru` → должен быть IP VPS |
-| Сайт открывается по HTTP, но не по HTTPS | 443 закрыт firewall'ом | `sudo ufw status` → разрешить 443 |
-| Upload в admin падает 503 | `STORAGE_*` пустые / неправильные | `docker compose exec app printenv \| grep STORAGE` |
-| Бэкапы не появляются в S3 | Не настроен `BACKUP_S3_*` или нет прав на bucket | `docker compose logs backup` |
-| OG-картинка не рендерится | `next/og` падает в standalone | Smoke `curl -I https://example.ru/og/<slug>` — если 500, см. plan-06 risk #5 |
+| `[auth][error] UntrustedHost` на все /api/auth/* | Нет `AUTH_TRUST_HOST=true` в `.env` | Добавить + `up -d --force-recreate app` |
+| OAuth-редирект уводит на `http://<container-id>:3000` | Редиректы строились от `req.url` | Исправлено в коде (base = `NEXTAUTH_URL`); проверить, что `NEXTAUTH_URL` = публичный https-URL |
+| Upload фото → 500, в логах `sharp ... ERR_DLOPEN_FAILED libvips` | Версия sharp в package.json ≠ версии, которую Next несёт как optional dep → standalone-трейс не кладёт libvips | Держать sharp той же minor-версии, что у Next (см. `pnpm why sharp`); `.npmrc` с `node-linker=hoisted` — в репо |
+| Обложка `/_next/image?url=...` → 400, но `<img>` в посте работает | `STORAGE_PUBLIC_BASE` не был доступен при сборке → S3-хост не в remotePatterns | Заполнить `.env` до сборки; compose прокидывает build arg сам |
+| `app` контейнер `unhealthy`, но сайт работает | Next standalone биндился на `$HOSTNAME` (= container ID), healthcheck по localhost не проходил | Исправлено: `ENV HOSTNAME=0.0.0.0` в Dockerfile |
+| Поменял `.env`, но ничего не изменилось | `restart` не перечитывает env_file | `up -d --force-recreate app` |
+| `acme: error` в Caddy | DNS ещё не указывает на VPS / 80,443 закрыты | `dig +short example.ru @1.1.1.1`; `ufw status` |
+| `Failed to find Server Action` в браузере | Кеш вкладки от другого билда/стека | Инкогнито или hard reload |
+| Бэкап падает `Unable to locate credentials` | AWS_* не экспортированы в сессии | Уже самодостаточно в `scripts/backup.sh`; проверить `BACKUP_S3_*` в `.env` |
+| `pnpm build` OOM на VPS | Нет swap | §4.1 — swap обязателен |
 
-## 12. Восстановление из бэкапа
+## 11. Восстановление из бэкапа
 
 См. отдельный документ: [`docs/RECOVERY.md`](./RECOVERY.md).

@@ -3,7 +3,7 @@ export const RESERVED_USERNAMES = [
   "api", "auth", "login", "logout", "welcome", "settings",
   "new", "edit", "p", "u", "t", "tag", "tags",
   "about", "rules", "contacts", "help", "support",
-  "null", "undefined", "system", "skelet",
+  "null", "undefined", "system", "skelet", "foxgeek",
 ] as const;
 
 const FORMAT = /^[a-z0-9_-]{3,20}$/;

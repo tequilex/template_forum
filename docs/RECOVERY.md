@@ -1,6 +1,6 @@
-# Skelet — Disaster Recovery
+# foxgeek — Disaster Recovery
 
-> Восстановление БД из бэкапа в S3 Cold (`skelet-backups`).
+> Восстановление БД из бэкапа в Timeweb S3 Cold (bucket из `BACKUP_S3_BUCKET`).
 
 ## 1. Получить последний дамп
 
@@ -10,17 +10,17 @@
 # Установить aws-cli если ещё нет
 sudo apt install awscli
 
-# Указать credentials BACKUP_S3_*
+# Указать credentials BACKUP_S3_* (значения — из .env)
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
-export AWS_DEFAULT_REGION=ru-central1
+export AWS_DEFAULT_REGION=ru-1
 
 # Список доступных дампов
-aws --endpoint-url=https://s3.timeweb.cloud s3 ls s3://skelet-backups/db/
+aws --endpoint-url=https://s3.twcstorage.ru s3 ls s3://<cold-bucket-uuid>/db/
 
 # Скачать нужный
-aws --endpoint-url=https://s3.timeweb.cloud s3 cp \
-  s3://skelet-backups/db/backup-2026-06-29-0300.sql.gz /tmp/restore.sql.gz
+aws --endpoint-url=https://s3.twcstorage.ru s3 cp \
+  s3://<cold-bucket-uuid>/db/backup-2026-06-29-0300.sql.gz /tmp/restore.sql.gz
 ```
 
 ## 2. Восстановление в **новую** БД (рекомендуемый дрилл)
@@ -57,10 +57,9 @@ docker compose exec db psql -U app -d postgres -c "CREATE DATABASE app;"
 
 gunzip -c /tmp/restore.sql.gz | docker compose exec -T db psql -U app -d app
 
-# Применить миграции (если дамп старше последней миграции — есть шанс что они захардкодены в дампе; если нет — pnpm db:migrate)
-docker compose exec app pnpm db:migrate
-
 docker compose start app
+# Миграции применятся автоматически при старте app (entrypoint),
+# если дамп старше последней миграции.
 ```
 
 ## 4. Recovery drill (раз в квартал)

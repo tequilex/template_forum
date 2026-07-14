@@ -1,7 +1,7 @@
 export const seo = {
-  siteName: "Skelet",
-  titleTemplate: (postTitle: string) => `${postTitle} — Skelet`,
-  defaultTitle: "Skelet — сообщество",
+  siteName: "foxgeek",
+  titleTemplate: (postTitle: string) => `${postTitle} — foxgeek`,
+  defaultTitle: "foxgeek — сообщество",
   defaultDescription: "Тестовый инстанс блог-скелета.",
   themeColor: "#ffffff",
   locale: "ru_RU",

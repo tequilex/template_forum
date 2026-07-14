@@ -4,8 +4,8 @@ const SITE_CONTACT_EMAIL = "test@mail.ru";
 
 export const content = {
   site: {
-    name: "Skelet",
-    shortName: "Skelet",
+    name: "foxgeek",
+    shortName: "foxgeek",
     tagline: "Сообщество (тестовая ниша)",
     description: "Тестовый инстанс скелета. Замените текстами своей ниши в theme/content.ts.",
     contactEmail: SITE_CONTACT_EMAIL,
@@ -115,10 +115,10 @@ export const content = {
   },
   privacy: {
     title: "Политика конфиденциальности",
-    intro: "Этот сайт — небольшой блог на платформе Skelet. Ниже описано, какие данные собираем и зачем.",
+    intro: "Этот сайт — небольшой блог на платформе foxgeek. Ниже описано, какие данные собираем и зачем.",
     section: {
       whoWeAre: "Кто мы",
-      whoWeAreBody: `Skelet — независимый проект. По вопросам обработки персональных данных пишите на ${SITE_CONTACT_EMAIL}.`,
+      whoWeAreBody: `foxgeek — независимый проект. По вопросам обработки персональных данных пишите на ${SITE_CONTACT_EMAIL}.`,
       whatWeCollect: "Какие данные собираем",
       whatWeCollectBody: "Email и публичный профиль (имя, никнейм, аватар) при входе через OAuth-провайдеры (Yandex, VK, Google, GitHub). Контент, который вы публикуете (посты, комментарии, темы). Технические данные через Яндекс.Метрика — IP, User-Agent, путь, реферер, длительность сессии (без webvisor).",
       cookies: "Cookies",
@@ -134,7 +134,7 @@ export const content = {
     label: "Написать",
     cta: "Написать пост",
   },
-  copyright: `© ${new Date().getFullYear()} Skelet`,
+  copyright: `© ${new Date().getFullYear()} foxgeek`,
 } as const;
 
 export type ContentSchema = typeof content;
